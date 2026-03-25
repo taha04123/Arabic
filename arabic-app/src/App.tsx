@@ -64,6 +64,7 @@ const statusR=(r:number)=>r>=85?{l:"Mastered",c:GREEN}:r>=60?{l:"Familiar",c:TEA
 
 // ── FUZZY MATCH ──────────────────────────────────────────────────
 function fuzzy(a:string,b:string){a=a.trim();b=b.trim();if(a===b)return 1;const L=a.length>b.length?a:b,S=a.length>b.length?b:a;if(!L.length)return 1;let m=0;for(let i=0;i<S.length;i++)if(L.includes(S[i]))m++;return m/L.length;}
+const checkAr=(input:string,target:string)=>{const v=input.trim();return v===target||fuzzy(v,target)>=0.85;};
 
 // ── GRAMMAR DATA ─────────────────────────────────────────────────
 const PRONOUNS=[
@@ -178,10 +179,8 @@ const SarfTable=({data}:{data:typeof STRONG})=>{
   const [bottom,setBottom]=useState({masdar:"",fail:"",mafool:""});
   const [bottomChecked,setBottomChecked]=useState(false);
   const ck=(s:string,m:string,i:number)=>`${s}_${m}_${i}`;
-  const isOk=(k:string,t:string)=>{const a=(answers[k]||"").trim();return a===t||fuzzy(a,t)>=0.85;};
-  const isOk2=(a:string,t:string)=>{const v=(a||"").trim();return v===t||fuzzy(v,t)>=0.85;};
   const total=MOODS.length*PRONOUNS.length*2;
-  const correct=checked?Object.keys(answers).filter(k=>{const[s,m,i]=k.split("_");return isOk(k,(data as any)[s][m][parseInt(i)]);}).length:0;
+  const correct=checked?Object.keys(answers).filter(k=>{const[s,m,i]=k.split("_");return checkAr(answers[k]||"",(data as any)[s][m][parseInt(i)]);}).length:0;
   if(amrPage)return(
     <div>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
@@ -246,7 +245,7 @@ const SarfTable=({data}:{data:typeof STRONG})=>{
                 <span style={{fontSize:10,color:C.muted,display:"block"}}>{pr.sub}</span>
               </td>
               {MOODS.map(m=>{
-                const k=ck("active",m.key,i);const ans=answers[k]||"";const ok=checked?isOk(k,data.active[m.key as keyof typeof data.active][i]):null;
+                const k=ck("active",m.key,i);const ans=answers[k]||"";const ok=checked?checkAr(ans,data.active[m.key as keyof typeof data.active][i]):null;
                 return(<td key={m.key+"a"} style={{padding:"3px 5px"}}>
                   {mode==="fill"?(
                     <button onClick={()=>setOverlay({key:k,label:`معلوم ${m.ar} — ${pr.ar}`,target:data.active[m.key as keyof typeof data.active][i],store:"main"})}
@@ -259,7 +258,7 @@ const SarfTable=({data}:{data:typeof STRONG})=>{
                 </td>);
               })}
               {MOODS.map(m=>{
-                const k=ck("passive",m.key,i);const ans=answers[k]||"";const ok=checked?isOk(k,data.passive[m.key as keyof typeof data.passive][i]):null;
+                const k=ck("passive",m.key,i);const ans=answers[k]||"";const ok=checked?checkAr(ans,data.passive[m.key as keyof typeof data.passive][i]):null;
                 return(<td key={m.key+"p"} style={{padding:"3px 5px"}}>
                   {mode==="fill"?(
                     <button onClick={()=>setOverlay({key:k,label:`مجهول ${m.ar} — ${pr.ar}`,target:data.passive[m.key as keyof typeof data.passive][i],store:"main"})}
@@ -286,7 +285,7 @@ const SarfTable=({data}:{data:typeof STRONG})=>{
           const targets=[data.masdar,data.fail,data.mafool];
           const cols=[PURPLE,TEAL,CORAL];
           const ans=bottom[field as keyof typeof bottom];
-          const ok=bottomChecked?isOk2(ans,targets[fi]):null;
+          const ok=bottomChecked?checkAr(ans,targets[fi]):null;
           return(<button key={field} onClick={()=>mode==="fill"&&setOverlay({key:`bottom_${field}`,label:labels[fi],target:targets[fi],store:"bottom",field})}
             style={{background:bottomChecked?(ok?cols[fi].bg:CORAL.bg):ans?cols[fi].bg:C.surface2,border:`0.5px solid ${bottomChecked?(ok?cols[fi].text:CORAL.text):ans?cols[fi].text:C.border}`,borderRadius:8,padding:"8px 10px",cursor:mode==="fill"?"pointer":"default",textAlign:"center"}}>
             <p style={{fontSize:10,color:bottomChecked?(ok?cols[fi].text:CORAL.text):cols[fi].text,margin:"0 0 3px",fontWeight:500}}>{labels[fi]}</p>
@@ -317,16 +316,27 @@ const SarfTable=({data}:{data:typeof STRONG})=>{
 // ── FORM RULES TAB ────────────────────────────────────────────────
 const FormRulesTab=()=>{
   const [selected,setSelected]=useState<typeof FORM_RULES[0]|null>(null);
+  const [showCanvas,setShowCanvas]=useState(false);
+  const handleSelect=(f:typeof FORM_RULES[0])=>{const same=selected?.num===f.num;setSelected(same?null:f);setShowCanvas(false);};
   return(
     <div>
       <SL>10 form rules — all use the ف-ع-ل placeholder root</SL>
       <AccentBar>Every form uses the same root so the pattern change is immediately visible. Tap any row to open its full sarf table and example sentence.</AccentBar>
       {selected&&(
         <div style={{marginBottom:16}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:6}}>
             <Pill label={`Form ${selected.num}`} color={selected.color}/>
-            <Btn onClick={()=>setSelected(null)} sm col={GRAY}>Close ✕</Btn>
+            <div style={{display:"flex",gap:6}}>
+              <Btn onClick={()=>setShowCanvas(s=>!s)} sm col={showCanvas?GRAY:selected.color}>{showCanvas?"Close canvas ✕":"Practice writing ✏"}</Btn>
+              <Btn onClick={()=>{setSelected(null);setShowCanvas(false);}} sm col={GRAY}>Close ✕</Btn>
+            </div>
           </div>
+          {showCanvas&&(
+            <Card style={{marginBottom:10}}>
+              <p style={{fontSize:13,fontWeight:500,color:C.text,margin:"0 0 8px"}}>Practice writing: <span style={{direction:"rtl",color:selected.color.text,fontSize:18}}>{selected.pat}</span></p>
+              <DrawCanvas targetWord={selected.pat} onResult={()=>setShowCanvas(false)}/>
+            </Card>
+          )}
           <SarfTable data={STRONG}/>
           <Card style={{marginTop:10}}>
             <p style={{fontSize:13,fontWeight:500,color:C.text,margin:"0 0 6px"}}>Example — Form {selected.num}</p>
@@ -337,7 +347,7 @@ const FormRulesTab=()=>{
       )}
       <div style={{display:"flex",flexDirection:"column",gap:5}}>
         {FORM_RULES.map(f=>(
-          <button key={f.num} onClick={()=>setSelected(selected?.num===f.num?null:f)}
+          <button key={f.num} onClick={()=>handleSelect(f)}
             style={{background:selected?.num===f.num?f.color.bg:C.surface,border:`0.5px solid ${selected?.num===f.num?f.color.text:C.border}`,borderRadius:10,padding:"10px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.15s"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,flexWrap:"wrap",gap:6}}>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -360,15 +370,29 @@ const DrawCanvas=({targetWord,onResult}:{targetWord:string;onResult:(r:string)=>
   const canvasRef=useRef<HTMLCanvasElement>(null);
   const drawing=useRef(false);
   const lastPos=useRef<{x:number;y:number}|null>(null);
+  const history=useRef<ImageData[]>([]);
+  const historyIdx=useRef(-1);
   const [checked,setChecked]=useState(false);
   const [aiResult,setAiResult]=useState<{result:string;read:string;note:string}|null>(null);
   const [loading,setLoading]=useState(false);
   const [showTarget,setShowTarget]=useState(true);
   const [tool,setTool]=useState("pen");
-
-  const CANVAS_W=600;
-  const CANVAS_H=180;
-  
+  const [canUndo,setCanUndo]=useState(false);
+  const [canRedo,setCanRedo]=useState(false);
+  const CANVAS_W=600;const CANVAS_H=180;
+  const BASELINE=CANVAS_H*0.72;const TOPLINE=CANVAS_H*0.18;
+  const drawRulers=(ctx:CanvasRenderingContext2D)=>{
+    ctx.save();ctx.setLineDash([6,6]);
+    ctx.strokeStyle="rgba(255,255,255,0.12)";ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,BASELINE);ctx.lineTo(CANVAS_W,BASELINE);ctx.stroke();
+    ctx.strokeStyle="rgba(255,255,255,0.06)";
+    ctx.beginPath();ctx.moveTo(0,TOPLINE);ctx.lineTo(CANVAS_W,TOPLINE);ctx.stroke();
+    ctx.restore();
+  };
+  const saveState=()=>{const c=canvasRef.current;if(!c)return;const img=c.getContext("2d")!.getImageData(0,0,c.width,c.height);history.current=history.current.slice(0,historyIdx.current+1);history.current.push(img);historyIdx.current=history.current.length-1;setCanUndo(historyIdx.current>0);setCanRedo(false);};
+  const undo=()=>{if(historyIdx.current<=0)return;historyIdx.current--;canvasRef.current!.getContext("2d")!.putImageData(history.current[historyIdx.current],0,0);setCanUndo(historyIdx.current>0);setCanRedo(true);};
+  const redo=()=>{if(historyIdx.current>=history.current.length-1)return;historyIdx.current++;canvasRef.current!.getContext("2d")!.putImageData(history.current[historyIdx.current],0,0);setCanUndo(true);setCanRedo(historyIdx.current<history.current.length-1);};
+  useEffect(()=>{const c=canvasRef.current;if(!c)return;const ctx=c.getContext("2d")!;drawRulers(ctx);history.current=[ctx.getImageData(0,0,c.width,c.height)];historyIdx.current=0;},[]);
   const getPos=(e:React.MouseEvent|React.TouchEvent,c:HTMLCanvasElement)=>{
     const r=c.getBoundingClientRect();const sx=c.width/r.width;const sy=c.height/r.height;
     if("touches" in e)return{x:(e.touches[0].clientX-r.left)*sx,y:(e.touches[0].clientY-r.top)*sy};
@@ -385,17 +409,8 @@ const DrawCanvas=({targetWord,onResult}:{targetWord:string;onResult:(r:string)=>
     ctx.lineWidth=tool==="eraser"?24:4.5;ctx.lineCap="round";ctx.lineJoin="round";
     ctx.strokeStyle=tool==="eraser"?"#111":"#CECBF6";ctx.stroke();lastPos.current=p;
   };
-  const end=(e:React.MouseEvent|React.TouchEvent)=>{e.preventDefault();drawing.current=false;lastPos.current=null;};
-  const clearCanvas=()=>{
-    const c=canvasRef.current;
-    if(!c)return;
-    const ctx=c.getContext("2d");
-    if(!ctx)return; // This line fixes the TS18047 error
-    ctx.clearRect(0,0,c.width,c.height);
-    setChecked(false);
-    setAiResult(null);
-  };
- 
+  const end=(e:React.MouseEvent|React.TouchEvent)=>{e.preventDefault();if(drawing.current)saveState();drawing.current=false;lastPos.current=null;};
+  const clearCanvas=()=>{const c=canvasRef.current!;const ctx=c.getContext("2d")!;ctx.clearRect(0,0,c.width,c.height);drawRulers(ctx);setChecked(false);setAiResult(null);history.current=[ctx.getImageData(0,0,c.width,c.height)];historyIdx.current=0;setCanUndo(false);setCanRedo(false);};
   const checkWithAI=async()=>{
     const c=canvasRef.current;
     if(!c) return;
@@ -472,6 +487,8 @@ const DrawCanvas=({targetWord,onResult}:{targetWord:string;onResult:(r:string)=>
       <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
         <button onClick={()=>setTool("pen")} style={{background:tool==="pen"?PURPLE.bg:"transparent",border:`0.5px solid ${tool==="pen"?PURPLE.text:C.borderMed}`,borderRadius:8,padding:"5px 12px",fontSize:12,color:tool==="pen"?PURPLE.text:C.muted,cursor:"pointer"}}>✏ Pen</button>
         <button onClick={()=>setTool("eraser")} style={{background:tool==="eraser"?AMBER.bg:"transparent",border:`0.5px solid ${tool==="eraser"?AMBER.text:C.borderMed}`,borderRadius:8,padding:"5px 12px",fontSize:12,color:tool==="eraser"?AMBER.text:C.muted,cursor:"pointer"}}>◻ Eraser</button>
+        <button onClick={undo} disabled={!canUndo} style={{background:canUndo?BLUE.bg:"transparent",border:`0.5px solid ${canUndo?BLUE.text:C.borderMed}`,borderRadius:8,padding:"5px 12px",fontSize:12,color:canUndo?BLUE.text:C.muted,cursor:canUndo?"pointer":"not-allowed",opacity:canUndo?1:0.45}}>↩ Undo</button>
+        <button onClick={redo} disabled={!canRedo} style={{background:canRedo?BLUE.bg:"transparent",border:`0.5px solid ${canRedo?BLUE.text:C.borderMed}`,borderRadius:8,padding:"5px 12px",fontSize:12,color:canRedo?BLUE.text:C.muted,cursor:canRedo?"pointer":"not-allowed",opacity:canRedo?1:0.45}}>↪ Redo</button>
         <Btn onClick={checkWithAI} col={PURPLE} sm disabled={loading}>{loading?"Checking…":"Check with AI ✓"}</Btn>
         <Btn onClick={clearCanvas} col={AMBER} sm>Clear all</Btn>
         <Btn onClick={()=>onResult("correct")} col={TEAL} sm>I wrote it correctly ✓</Btn>
@@ -598,15 +615,10 @@ const SarfWriteTable=({word,onDone}: any)=>{
       ?["قُلْ","قُولِي","قُولَا","قُولُوا","قُلْنَ"][amrIdx]
       :["اُفْعَلْ","اُفْعَلِي","اُفْعَلَا","اُفْعَلُوا","اُفْعَلْنَ"][amrIdx];
   };
-
-  const isOk=(k: string,t: string)=>{const a=(answers[k]||"").trim();return a===t||fuzzy(a,t)>=0.85;};
-  const total=PRONOUNS.length*3+AMR_IDX.length; 
+  const total=PRONOUNS.length*2+AMR_IDX.length;
   const correct=checked?
-    PRONOUNS.reduce((acc: number, _: any, i: number)=>{
-      const pk=`past_${i}`,prk=`present_${i}`;
-      return acc+(isOk(pk,word.conjugation.past[i])?1:0)+(isOk(prk,word.conjugation.present[i])?1:0);
-    },0)+AMR_IDX.reduce((acc: number, i: number)=>acc+(isOk(`amr_${i}`,amrForm(i))?1:0),0):0;
-
+    PRONOUNS.reduce((acc,_,i)=>acc+(checkAr(answers[`past_${i}`]||"",word.conjugation.past[i])?1:0)+(checkAr(answers[`present_${i}`]||"",word.conjugation.present[i])?1:0),0)
+    +AMR_IDX.reduce((acc,i)=>acc+(checkAr(answers[`amr_${i}`]||"",amrForm(i))?1:0),0):0;
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
@@ -627,20 +639,15 @@ const SarfWriteTable=({word,onDone}: any)=>{
             <th style={{padding:"6px 8px",color:BLUE.text,fontWeight:500,textAlign:"right",minWidth:90}}>أمر</th>
           </tr></thead>
           <tbody>{PRONOUNS.map((pr,i)=>{
-            const gc=gramColor(pr.gram);
-            const isFirst=i===0||PRONOUNS[i-1].gram!==pr.gram;
-            const canAmr=isAmr(i);
-            const mkCell=(k: string,target: string,col: string)=>{
-              const ans=answers[k]||"";
-              const ok=checked?isOk(k,target):null;
-              return(
-                <td style={{padding:"3px 5px"}}>
-                  <button onClick={()=>setOverlay({key:k,target,label:`${pr.ar} — ${col==="ماضي"?"past":col==="مضارع"?"present":"أمر"}`})}
-                    style={{width:"100%",minWidth:80,background:checked?(ok?TEAL.bg:CORAL.bg):ans?PURPLE.bg:C.surface2,border:`0.5px solid ${checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.border}`,borderRadius:5,padding:"5px 4px",cursor:"pointer",color:checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.muted,fontSize:13,direction:"rtl",textAlign:"right"}}>
-                    {ans||<span style={{fontSize:10}}>tap</span>}
-                  </button>
-                </td>
-              );
+            const gc=gramColor(pr.gram);const isFirst=i===0||PRONOUNS[i-1].gram!==pr.gram;const canAmr=isAmr(i);
+            const mkCell=(k:string,target:string)=>{
+              const ans=answers[k]||"";const ok=checked?checkAr(ans,target):null;
+              return(<td style={{padding:"3px 5px"}}>
+                <button onClick={()=>setOverlay({key:k,target,label:`${pr.ar}`})}
+                  style={{width:"100%",minWidth:80,background:checked?(ok?TEAL.bg:CORAL.bg):ans?PURPLE.bg:C.surface2,border:`0.5px solid ${checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.border}`,borderRadius:5,padding:"5px 4px",cursor:"pointer",color:checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.muted,fontSize:13,direction:"rtl",textAlign:"right"}}>
+                  {ans||<span style={{fontSize:10}}>tap</span>}
+                </button>
+              </td>);
             };
             return(
               <tr key={i} style={{borderBottom:`0.5px solid ${C.border}`}}>
@@ -648,12 +655,9 @@ const SarfWriteTable=({word,onDone}: any)=>{
                   <span style={{direction:"rtl",display:"block",fontSize:13,color:C.text}}>{pr.ar}</span>
                   <span style={{fontSize:10,color:gc.text}}>{pr.gram} · {pr.sub}</span>
                 </td>
-                {mkCell(`past_${i}`,word.conjugation.past[i],"ماضي")}
-                {mkCell(`present_${i}`,word.conjugation.present[i],"مضارع")}
-                <td style={{padding:"3px 5px"}}>
-                  {canAmr?mkCell(`amr_${i}`,amrForm(i),"أمر").props.children:
-                    <div style={{textAlign:"center",fontSize:16,color:C.subtle}}>—</div>}
-                </td>
+                {mkCell(`past_${i}`,word.conjugation.past[i])}
+                {mkCell(`present_${i}`,word.conjugation.present[i])}
+                {canAmr?mkCell(`amr_${i}`,amrForm(i)):<td style={{padding:"3px 5px"}}><div style={{textAlign:"center",fontSize:16,color:C.subtle}}>—</div></td>}
               </tr>
             );
           })}</tbody>
