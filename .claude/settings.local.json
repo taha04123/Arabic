@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(npm run:*)",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Users/tahaa/AppData/Local/**)",
+      "Read(//c/Users/tahaa/**)",
+      "Read(//c/Users/tahaa/AppData/Roaming/**)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs:/c/Users/tahaa/AppData/Roaming/npm\")",
+      "Bash(cmd.exe /c \"node --version\")",
+      "Bash(cmd.exe /c \"where node\")",
+      "Bash(cmd.exe /c \"where npm 2>&1 && npm run build\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\tahaa\\\\source\\\\repos\\\\Arabic\\\\.claude\\\\worktrees\\\\unruffled-williams\\\\arabic-app && npm run build 2>&1\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem -Path ''C:\\\\Program Files'' -Filter ''node.exe'' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 3 FullName\")"
     ]
   }
 }
