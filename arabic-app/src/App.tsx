@@ -6,6 +6,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { VERBS } from "./words/verbs";
 import { NOUNS } from "./words/nouns";
+import { conjugateVerb } from "./utils/conjugate";
+import type { VerbType } from "./utils/conjugate";
 
 // ── TYPES ────────────────────────────────────────────────────────
 export interface VerbContext { s: string; t: string; m: string; }
@@ -15,7 +17,15 @@ export interface Verb {
   sentence: string; sentenceTr: string;
   contexts: VerbContext[];
   masdar: string; fail: string; mafool: string;
-  conjugation: { past: string[]; present: string[] };
+  type: VerbType;
+  madi: string;
+  mudariVowel?: 'a' | 'i' | 'u';
+  conjugation?: { past: string[]; present: string[] };
+}
+
+function getConjugation(v: Verb): { past: string[]; present: string[] } {
+  if (v.conjugation?.past && v.conjugation?.present) return v.conjugation as { past: string[]; present: string[] };
+  return conjugateVerb(v);
 }
 export interface NounPlural { ar: string; type: string; meaning: string; shift: boolean; }
 export interface NounContext { s: string; t: string; m: string; }
@@ -593,7 +603,7 @@ const SarfWriteTable=({word,onDone}: any)=>{
   const correct=checked?
     PRONOUNS.reduce((acc: number, _: any, i: number)=>{
       const pk=`past_${i}`,prk=`present_${i}`;
-      return acc+(isOk(pk,word.conjugation.past[i])?1:0)+(isOk(prk,word.conjugation.present[i])?1:0);
+      return acc+(isOk(pk,getConjugation(word).past[i])?1:0)+(isOk(prk,getConjugation(word).present[i])?1:0);
     },0)+AMR_IDX.reduce((acc: number, i: number)=>acc+(isOk(`amr_${i}`,amrForm(i))?1:0),0):0;
 
   return(
@@ -637,8 +647,8 @@ const SarfWriteTable=({word,onDone}: any)=>{
                   <span style={{direction:"rtl",display:"block",fontSize:13,color:C.text}}>{pr.ar}</span>
                   <span style={{fontSize:10,color:gc.text}}>{pr.gram} · {pr.sub}</span>
                 </td>
-                {mkCell(`past_${i}`,word.conjugation.past[i],"ماضي")}
-                {mkCell(`present_${i}`,word.conjugation.present[i],"مضارع")}
+                {mkCell(`past_${i}`,getConjugation(word).past[i],"ماضي")}
+                {mkCell(`present_${i}`,getConjugation(word).present[i],"مضارع")}
                 <td style={{padding:"3px 5px"}}>
                   {canAmr?mkCell(`amr_${i}`,amrForm(i),"أمر").props.children:
                     <div style={{textAlign:"center",fontSize:16,color:C.subtle}}>—</div>}
@@ -736,8 +746,8 @@ const VerbLearn=({word,learned,onComplete,isReview,initialStep,onStepChange}:{wo
                 <span style={{direction:"rtl",display:"block",fontSize:13,color:C.text}}>{pr.ar}</span>
                 <span style={{fontSize:10,color:gc.text}}>{pr.gram} · {pr.sub}</span>
               </td>
-              <td style={{padding:"5px 8px",textAlign:"right",direction:"rtl",fontSize:14,color:TEAL.text}}>{word.conjugation.past[i]}</td>
-              <td style={{padding:"5px 8px",textAlign:"right",direction:"rtl",fontSize:14,color:PURPLE.text}}>{word.conjugation.present[i]}</td>
+              <td style={{padding:"5px 8px",textAlign:"right",direction:"rtl",fontSize:14,color:TEAL.text}}>{getConjugation(word).past[i]}</td>
+              <td style={{padding:"5px 8px",textAlign:"right",direction:"rtl",fontSize:14,color:PURPLE.text}}>{getConjugation(word).present[i]}</td>
             </tr>);
           })}</tbody>
         </table>
