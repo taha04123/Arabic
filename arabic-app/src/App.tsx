@@ -20,7 +20,11 @@ export interface Verb {
   type: VerbType;
   madi: string;
   mudariVowel?: 'a' | 'i' | 'u';
-  conjugation?: { past: string[]; present: string[] };
+  conjugation?: {
+    past?: string[];
+    present?: string[];
+    passive?: { past: string[]; present: string[] };
+  };
 }
 
 function getConjugation(v: Verb): { past: string[]; present: string[] } {
@@ -74,6 +78,22 @@ const statusR=(r:number)=>r>=85?{l:"Mastered",c:GREEN}:r>=60?{l:"Familiar",c:TEA
 
 // ── FUZZY MATCH ──────────────────────────────────────────────────
 function fuzzy(a:string,b:string){a=a.trim();b=b.trim();if(a===b)return 1;const L=a.length>b.length?a:b,S=a.length>b.length?b:a;if(!L.length)return 1;let m=0;for(let i=0;i<S.length;i++)if(L.includes(S[i]))m++;return m/L.length;}
+const checkAr=(input:string,target:string)=>{const v=input.trim();return v===target||fuzzy(v,target)>=0.85;};
+const deriveMansub=(f:string):string=>{
+  if(f.endsWith("ُونَ"))return f.slice(0,-4)+"ُوا";
+  if(f.endsWith("ِينَ"))return f.slice(0,-4)+"ِي";
+  if(f.endsWith("انِ"))return f.slice(0,-3)+"ا";
+  if(f.endsWith("ُ"))return f.slice(0,-1)+"َ";
+  return f;
+};
+const deriveMajzum=(f:string):string=>{
+  if(f.endsWith("ُونَ"))return f.slice(0,-4)+"ُوا";
+  if(f.endsWith("ِينَ"))return f.slice(0,-4)+"ِي";
+  if(f.endsWith("انِ"))return f.slice(0,-3)+"ا";
+  if(f.endsWith("ُ"))return f.slice(0,-1)+"ْ";
+  if(f.endsWith("َ"))return f.slice(0,-1)+"ْ";
+  return f;
+};
 
 // ── GRAMMAR DATA ─────────────────────────────────────────────────
 const PRONOUNS=[
@@ -91,14 +111,16 @@ const AMR_PRONOUNS=[
 ];
 const gramColor=(g:string)=>g==="الغائب"?BLUE:g==="المخاطب"?TEAL:PURPLE;
 
-// Sarf templates (ف-ع-ل placeholder)
+// ── WEAK VERB TEMPLATES ──────────────────────────────────────────
 const STRONG={root:"ف-ع-ل",display:"فَعَلَ",meaning:"placeholder strong verb",
   active:{
+    past:["فَعَلَ","فَعَلَتْ","فَعَلَا","فَعَلَتَا","فَعَلُوا","فَعَلْنَ","فَعَلْتَ","فَعَلْتِ","فَعَلْتُمَا","فَعَلْتُمْ","فَعَلْتُنَّ","فَعَلْتُ","فَعَلْنَا"],
     marfu:["يَفْعَلُ","تَفْعَلُ","يَفْعَلَانِ","تَفْعَلَانِ","يَفْعَلُونَ","يَفْعَلْنَ","تَفْعَلُ","تَفْعَلِينَ","تَفْعَلَانِ","تَفْعَلُونَ","تَفْعَلْنَ","أَفْعَلُ","نَفْعَلُ"],
     mansub:["يَفْعَلَ","تَفْعَلَ","يَفْعَلَا","تَفْعَلَا","يَفْعَلُوا","يَفْعَلْنَ","تَفْعَلَ","تَفْعَلِي","تَفْعَلَا","تَفْعَلُوا","تَفْعَلْنَ","أَفْعَلَ","نَفْعَلَ"],
     majzum:["يَفْعَلْ","تَفْعَلْ","يَفْعَلَا","تَفْعَلَا","يَفْعَلُوا","يَفْعَلْنَ","تَفْعَلْ","تَفْعَلِي","تَفْعَلَا","تَفْعَلُوا","تَفْعَلْنَ","أَفْعَلْ","نَفْعَلْ"],
   },
   passive:{
+    past:["فُعِلَ","فُعِلَتْ","فُعِلَا","فُعِلَتَا","فُعِلُوا","فُعِلْنَ","فُعِلْتَ","فُعِلْتِ","فُعِلْتُمَا","فُعِلْتُمْ","فُعِلْتُنَّ","فُعِلْتُ","فُعِلْنَا"],
     marfu:["يُفْعَلُ","تُفْعَلُ","يُفْعَلَانِ","تُفْعَلَانِ","يُفْعَلُونَ","يُفْعَلْنَ","تُفْعَلُ","تُفْعَلِينَ","تُفْعَلَانِ","تُفْعَلُونَ","تُفْعَلْنَ","أُفْعَلُ","نُفْعَلُ"],
     mansub:["يُفْعَلَ","تُفْعَلَ","يُفْعَلَا","تُفْعَلَا","يُفْعَلُوا","يُفْعَلْنَ","تُفْعَلَ","تُفْعَلِي","تُفْعَلَا","تُفْعَلُوا","تُفْعَلْنَ","أُفْعَلَ","نُفْعَلَ"],
     majzum:["يُفْعَلْ","تُفْعَلْ","يُفْعَلَا","تُفْعَلَا","يُفْعَلُوا","يُفْعَلْنَ","تُفْعَلْ","تُفْعَلِي","تُفْعَلَا","تُفْعَلُوا","تُفْعَلْنَ","أُفْعَلْ","نُفْعَلْ"],
@@ -106,14 +128,15 @@ const STRONG={root:"ف-ع-ل",display:"فَعَلَ",meaning:"placeholder strong
   amr:["اِفْعَلْ","اِفْعَلِي","اِفْعَلَا","اِفْعَلُوا","اِفْعَلْنَ"],
   masdar:"فَعْل",fail:"فَاعِل",mafool:"مَفْعُول",
 };
-/*const AJWAF={root:"ق-و-ل",display:"قَالَ",meaning:"to say",weakType:"أجوف (و)",
-  weakNote:"In مجزوم, the weak middle letter و drops: يَقُولُ → يَقُلْ.",
+const AJWAF={root:"ق-و-ل",display:"قَالَ",meaning:"to say",weakType:"أجوف (و)",weakNote:"In مجزوم, the weak middle letter و drops: يَقُولُ → يَقُلْ.",
   active:{
+    past:["قَالَ","قَالَتْ","قَالَا","قَالَتَا","قَالُوا","قُلْنَ","قُلْتَ","قُلْتِ","قُلْتُمَا","قُلْتُمْ","قُلْتُنَّ","قُلْتُ","قُلْنَا"],
     marfu:["يَقُولُ","تَقُولُ","يَقُولَانِ","تَقُولَانِ","يَقُولُونَ","يَقُلْنَ","تَقُولُ","تَقُولِينَ","تَقُولَانِ","تَقُولُونَ","تَقُلْنَ","أَقُولُ","نَقُولُ"],
     mansub:["يَقُولَ","تَقُولَ","يَقُولَا","تَقُولَا","يَقُولُوا","يَقُلْنَ","تَقُولَ","تَقُولِي","تَقُولَا","تَقُولُوا","تَقُلْنَ","أَقُولَ","نَقُولَ"],
     majzum:["يَقُلْ","تَقُلْ","يَقُولَا","تَقُولَا","يَقُولُوا","يَقُلْنَ","تَقُلْ","تَقُولِي","تَقُولَا","تَقُولُوا","تَقُلْنَ","أَقُلْ","نَقُلْ"],
   },
   passive:{
+    past:["قِيلَ","قِيلَتْ","قِيلَا","قِيلَتَا","قِيلُوا","قِلْنَ","قِلْتَ","قِلْتِ","قِلْتُمَا","قِلْتُمْ","قِلْتُنَّ","قِلْتُ","قِلْنَا"],
     marfu:["يُقَالُ","تُقَالُ","يُقَالَانِ","تُقَالَانِ","يُقَالُونَ","يُقَلْنَ","تُقَالُ","تُقَالِينَ","تُقَالَانِ","تُقَالُونَ","تُقَلْنَ","أُقَالُ","نُقَالُ"],
     mansub:["يُقَالَ","تُقَالَ","يُقَالَا","تُقَالَا","يُقَالُوا","يُقَلْنَ","تُقَالَ","تُقَالِي","تُقَالَا","تُقَالُوا","تُقَلْنَ","أُقَالَ","نُقَالَ"],
     majzum:["يُقَلْ","تُقَلْ","يُقَالَا","تُقَالَا","يُقَالُوا","يُقَلْنَ","تُقَلْ","تُقَالِي","تُقَالَا","تُقَالُوا","تُقَلْنَ","أُقَلْ","نُقَلْ"],
@@ -121,29 +144,273 @@ const STRONG={root:"ف-ع-ل",display:"فَعَلَ",meaning:"placeholder strong
   amr:["قُلْ","قُولِي","قُولَا","قُولُوا","قُلْنَ"],
   masdar:"قَوْل",fail:"قَائِل",mafool:"مَقُول",
 };
-*/
+const MITHAL={root:"و-ج-د",display:"وَجَدَ",meaning:"to find",weakType:"مثال (و)",weakNote:"The first letter و drops in the present tense: يَوَجِدُ → يَجِدُ.",
+  active:{
+    past:["وَجَدَ","وَجَدَتْ","وَجَدَا","وَجَدَتَا","وَجَدُوا","وَجَدْنَ","وَجَدْتَ","وَجَدْتِ","وَجَدْتُمَا","وَجَدْتُمْ","وَجَدْتُنَّ","وَجَدْتُ","وَجَدْنَا"],
+    marfu:["يَجِدُ","تَجِدُ","يَجِدَانِ","تَجِدَانِ","يَجِدُونَ","يَجِدْنَ","تَجِدُ","تَجِدِينَ","تَجِدَانِ","تَجِدُونَ","تَجِدْنَ","أَجِدُ","نَجِدُ"],
+    mansub:["يَجِدَ","تَجِدَ","يَجِدَا","تَجِدَا","يَجِدُوا","يَجِدْنَ","تَجِدَ","تَجِدِي","تَجِدَا","تَجِدُوا","تَجِدْنَ","أَجِدَ","نَجِدَ"],
+    majzum:["يَجِدْ","تَجِدْ","يَجِدَا","تَجِدَا","يَجِدُوا","يَجِدْنَ","تَجِدْ","تَجِدِي","تَجِدَا","تَجِدُوا","تَجِدْنَ","أَجِدْ","نَجِدْ"],
+  },
+  passive:{
+    past:["وُجِدَ","وُجِدَتْ","وُجِدَا","وُجِدَتَا","وُجِدُوا","وُجِدْنَ","وُجِدْتَ","وُجِدْتِ","وُجِدْتُمَا","وُجِدْتُمْ","وُجِدْتُنَّ","وُجِدْتُ","وُجِدْنَا"],
+    marfu:["يُوجَدُ","تُوجَدُ","يُوجَدَانِ","تُوجَدَانِ","يُوجَدُونَ","يُوجَدْنَ","تُوجَدُ","تُوجَدِينَ","تُوجَدَانِ","تُوجَدُونَ","تُوجَدْنَ","أُوجَدُ","نُوجَدُ"],
+    mansub:["يُوجَدَ","تُوجَدَ","يُوجَدَا","تُوجَدَا","يُوجَدُوا","يُوجَدْنَ","تُوجَدَ","تُوجَدِي","تُوجَدَا","تُوجَدُوا","تُوجَدْنَ","أُوجَدَ","نُوجَدَ"],
+    majzum:["يُوجَدْ","تُوجَدْ","يُوجَدَا","تُوجَدَا","يُوجَدُوا","يُوجَدْنَ","تُوجَدْ","تُوجَدِي","تُوجَدَا","تُوجَدُوا","تُوجَدْنَ","أُوجَدْ","نُوجَدْ"],
+  },
+  amr:["جِدْ","جِدِي","جِدَا","جِدُوا","جِدْنَ"],
+  masdar:"وُجُود",fail:"وَاجِد",mafool:"مَوْجُود",
+};
+const NAQIS={root:"د-ع-و",display:"دَعَا",meaning:"to call",weakType:"ناقص (و/ي)",weakNote:"The weak final letter causes changes in plurals and majzum (drops entirely).",
+  active:{
+    past:["دَعَا","دَعَتْ","دَعَوَا","دَعَتَا","دَعَوْا","دَعَوْنَ","دَعَوْتَ","دَعَوْتِ","دَعَوْتُمَا","دَعَوْتُمْ","دَعَوْتُنَّ","دَعَوْتُ","دَعَوْنَا"],
+    marfu:["يَدْعُو","تَدْعُو","يَدْعَوَانِ","تَدْعَوَانِ","يَدْعُونَ","يَدْعُونَ","تَدْعُو","تَدْعِينَ","تَدْعَوَانِ","تَدْعُونَ","تَدْعُونَ","أَدْعُو","نَدْعُو"],
+    mansub:["يَدْعُوَ","تَدْعُوَ","يَدْعَوَا","تَدْعَوَا","يَدْعُوا","يَدْعُونَ","تَدْعُوَ","تَدْعِي","تَدْعَوَا","تَدْعُوا","تَدْعُونَ","أَدْعُوَ","نَدْعُوَ"],
+    majzum:["يَدْعْ","تَدْعْ","يَدْعَوَا","تَدْعَوَا","يَدْعُوا","يَدْعُونَ","تَدْعْ","تَدْعِي","تَدْعَوَا","تَدْعُوا","تَدْعُونَ","أَدْعْ","نَدْعْ"],
+  },
+  passive:{
+    past:["دُعِيَ","دُعِيَتْ","دُعِيَا","دُعِيَتَا","دُعُوا","دُعِينَ","دُعِيتَ","دُعِيتِ","دُعِيتُمَا","دُعِيتُمْ","دُعِيتُنَّ","دُعِيتُ","دُعِينَا"],
+    marfu:["يُدْعَى","تُدْعَى","يُدْعَيَانِ","تُدْعَيَانِ","يُدْعَوْنَ","يُدْعَيْنَ","تُدْعَى","تُدْعَيْنَ","تُدْعَيَانِ","تُدْعَوْنَ","تُدْعَيْنَ","أُدْعَى","نُدْعَى"],
+    mansub:["يُدْعَى","تُدْعَى","يُدْعَيَا","تُدْعَيَا","يُدْعَوْا","يُدْعَيْنَ","تُدْعَى","تُدْعَيْ","تُدْعَيَا","تُدْعَوْا","تُدْعَيْنَ","أُدْعَى","نُدْعَى"],
+    majzum:["يُدْعَ","تُدْعَ","يُدْعَيَا","تُدْعَيَا","يُدْعَوْا","يُدْعَيْنَ","تُدْعَ","تُدْعَيْ","تُدْعَيَا","تُدْعَوْا","تُدْعَيْنَ","أُدْعَ","نُدْعَ"],
+  },
+  amr:["اُدْعُ","اُدْعِي","اُدْعُوَا","اُدْعُوا","اُدْعُونَ"],
+  masdar:"دَعْوَة",fail:"دَاعٍ",mafool:"مَدْعُوّ",
+};
+const MUDAAF={root:"ر-د-د",display:"رَدَّ",meaning:"to reply",weakType:"مضاعف",weakNote:"The identical 2nd and 3rd letters merge (shadda) unless followed by a consonant pronoun.",
+  active:{
+    past:["رَدَّ","رَدَّتْ","رَدَّا","رَدَّتَا","رَدُّوا","رَدَدْنَ","رَدَدْتَ","رَدَدْتِ","رَدَدْتُمَا","رَدَدْتُمْ","رَدَدْتُنَّ","رَدَدْتُ","رَدَدْنَا"],
+    marfu:["يَرُدُّ","تَرُدُّ","يَرُدَّانِ","تَرُدَّانِ","يَرُدُّونَ","يَرْدُدْنَ","تَرُدُّ","تَرُدِّينَ","تَرُدَّانِ","تَرُدُّونَ","تَرْدُدْنَ","أَرُدُّ","نَرُدُّ"],
+    mansub:["يَرُدَّ","تَرُدَّ","يَرُدَّا","تَرُدَّا","يَرُدُّوا","يَرْدُدْنَ","تَرُدَّ","تَرُدِّي","تَرُدَّا","تَرُدُّوا","تَرْدُدْنَ","أَرُدَّ","نَرُدَّ"],
+    majzum:["يَرُدَّ","تَرُدَّ","يَرُدَّا","تَرُدَّا","يَرُدُّوا","يَرْدُدْنَ","تَرُدَّ","تَرُدِّي","تَرُدَّا","تَرُدُّوا","تَرْدُدْنَ","أَرُدَّ","نَرُدَّ"],
+  },
+  passive:{
+    past:["رُدَّ","رُدَّتْ","رُدَّا","رُدَّتَا","رُدُّوا","رُدِدْنَ","رُدِدْتَ","رُدِدْتِ","رُدِدْتُمَا","رُدِدْتُمْ","رُدِدْتُنَّ","رُدِدْتُ","رُدِدْنَا"],
+    marfu:["يُرَدُّ","تُرَدُّ","يُرَدَّانِ","تُرَدَّانِ","يُرَدُّونَ","يُرْدَدْنَ","تُرَدُّ","تُرَدِّينَ","تُرَدَّانِ","تُرَدُّونَ","تُرْدَدْنَ","أُرَدُّ","نُرَدُّ"],
+    mansub:["يُرَدَّ","تُرَدَّ","يُرَدَّا","تُرَدَّا","يُرَدُّوا","يُرْدَدْنَ","تُرَدَّ","تُرَدِّي","تُرَدَّا","تُرَدُّوا","تُرْدَدْنَ","أُرَدَّ","نُرَدَّ"],
+    majzum:["يُرَدَّ","تُرَدَّ","يُرَدَّا","تُرَدَّا","يُرَدُّوا","يُرْدَدْنَ","تُرَدَّ","تُرَدِّي","تُرَدَّا","تُرَدُّوا","تُرْدَدْنَ","أُرَدَّ","نُرَدَّ"],
+  },
+  amr:["رُدَّ","رُدِّي","رُدَّا","رُدُّوا","اُرْدُدْنَ"],
+  masdar:"رَدّ",fail:"رَادّ",mafool:"مَرْدُود",
+};
 
-// ── FORM RULES ───────────────────────────────────────────────────
+// Add this right below your VERB_TYPES array
+const genSarf=(past:string, pres:string, pv:string, amr:string, ppast:string, ppres:string)=>{
+  const pB=past.slice(0,-1), ppB=ppast.slice(0,-1);
+  const getPr=(pv:string, b:string, m:string)=>{
+    const v=m==="marfu"?"ُ":m==="mansub"?"َ":"ْ";
+    const d2=m==="marfu"?"َانِ":"َا", dP=m==="marfu"?"ُونَ":"ُوا", dF=m==="marfu"?"ِينَ":"ِي";
+    return ["ي"+pv+b+v, "ت"+pv+b+v, "ي"+pv+b+d2, "ت"+pv+b+d2, "ي"+pv+b+dP, "ي"+pv+b+"ْنَ", "ت"+pv+b+v, "ت"+pv+b+dF, "ت"+pv+b+d2, "ت"+pv+b+dP, "ت"+pv+b+"ْنَ", "أ"+pv+b+v, "ن"+pv+b+v];
+  };
+  return{
+    display: past, root: "ف-ع-ل", meaning: "Generated Form",
+    masdar: "—", fail: "—", mafool: "—",
+    active:{
+      past:[past,past+"تْ",past+"ا",past+"تَا",pB+"ُوا",pB+"ْنَ",pB+"ْتَ",pB+"ْتِ",pB+"ْتُمَا",pB+"ْتُمْ",pB+"ْتُنَّ",pB+"ْتُ",pB+"ْنَا"],
+      marfu:getPr(pv,pres,"marfu"), mansub:getPr(pv,pres,"mansub"), majzum:getPr(pv,pres,"majzum")
+    },
+    passive: ppast ? {
+      past:[ppast,ppast+"تْ",ppast+"ا",ppast+"تَا",ppB+"ُوا",ppB+"ْنَ",ppB+"ْتَ",ppB+"ْتِ",ppB+"ْتُمَا",ppB+"ْتُمْ",ppB+"ْتُنَّ",ppB+"ْتُ",ppB+"ْنَا"],
+      marfu:getPr("ُ",ppres,"marfu"), mansub:getPr("ُ",ppres,"mansub"), majzum:getPr("ُ",ppres,"majzum")
+    } : {past:Array(13).fill("—"),marfu:Array(13).fill("—"),mansub:Array(13).fill("—"),majzum:Array(13).fill("—")},
+    amr:[amr+"ْ",amr+"ِي",amr+"َا",amr+"ُوا",amr+"ْنَ"]
+  };
+};
+
+const STRONG_FORMS=[
+  STRONG,
+  genSarf("فَعَّلَ","فَعِّل","ُ","فَعِّل","فُعِّلَ","فَعَّل"),
+  genSarf("فَاعَلَ","فَاعِل","ُ","فَاعِل","فُوعِلَ","فَاعَل"),
+  genSarf("أَفْعَلَ","فْعِل","ُ","أَفْعِل","أُفْعِلَ","فْعَل"),
+  genSarf("تَفَعَّلَ","تَفَعَّل","َ","تَفَعَّل","تُفُعِّلَ","تَفَعَّل"),
+  genSarf("تَفَاعَلَ","تَفَاعَل","َ","تَفَاعَل","تُفُوعِلَ","تَفَاعَل"),
+  genSarf("اِنْفَعَلَ","نْفَعِل","َ","اِنْفَعِل","اُنْفُعِلَ","نْفَعَل"),
+  genSarf("اِفْتَعَلَ","فْتَعِل","َ","اِفْتَعِل","اُفْتُعِلَ","فْتَعَل"),
+  genSarf("اِفْعَلَّ","فْعَلّ","َ","اِفْعَلِّ","",""),
+  genSarf("اِسْتَفْعَلَ","سْتَفْعِل","َ","اِسْتَفْعِل","اُسْتُفْعِلَ","سْتَفْعَل")
+];
+
+// Per-type per-form sarf data using actual example verbs
+const VERB_TYPE_FORMS=[
+  // [0] Strong سالم — STRONG_FORMS already uses ف-ع-ل which IS the example
+  STRONG_FORMS,
+  // [1] Hollow أجوف
+  [
+    AJWAF,
+    genSarf("زَيَّنَ","زَيِّن","ُ","زَيِّن","زُيِّنَ","زَيَّن"),
+    genSarf("قَاوَلَ","قَاوِل","ُ","قَاوِل","قُووِلَ","قَاوَل"),
+    genSarf("أَقَالَ","قِيل","ُ","أَقِل","أُقِيلَ","قَال"),
+    genSarf("تَزَيَّنَ","تَزَيَّن","َ","تَزَيَّن","تُزُيِّنَ","تَزَيَّن"),
+    genSarf("تَقَاوَلَ","تَقَاوَل","َ","تَقَاوَل","تُقُووِلَ","تَقَاوَل"),
+    genSarf("اِنْهَارَ","نْهَار","َ","اِنْهَر","",""),
+    genSarf("اِخْتَارَ","خْتَار","َ","اِخْتَر","اُخْتِيرَ","خْتَار"),
+    genSarf("اِسْوَدَّ","سْوَدّ","َ","اِسْوَدِّ","",""),
+    genSarf("اِسْتَقَالَ","سْتَقِيل","َ","اِسْتَقِل","اُسْتُقِيلَ","سْتَقَال"),
+  ],
+  // [2] Assimilated مثال
+  [
+    MITHAL,
+    genSarf("وَصَّلَ","وَصِّل","ُ","وَصِّل","وُصِّلَ","وَصَّل"),
+    genSarf("وَاصَلَ","وَاصِل","ُ","وَاصِل","وُوصِلَ","وَاصَل"),
+    genSarf("أَوْجَدَ","وْجِد","ُ","أَوْجِد","أُوجِدَ","وْجَد"),
+    genSarf("تَوَصَّلَ","تَوَصَّل","َ","تَوَصَّل","تُوُصِّلَ","تَوَصَّل"),
+    genSarf("تَوَاجَدَ","تَوَاجَد","َ","تَوَاجَد","تُووجِدَ","تَوَاجَد"),
+    genSarf("اِنْوَجَدَ","نْوَجِد","َ","اِنْوَجِد","",""),
+    genSarf("اِتَّصَلَ","تَّصِل","َ","اِتَّصِل","اُتُّصِلَ","تَّصَل"),
+    STRONG_FORMS[8], // Form IX not applicable for Assimilated
+    genSarf("اِسْتَوْعَبَ","سْتَوْعِب","َ","اِسْتَوْعِب","اُسْتُوعِبَ","سْتَوْعَب"),
+  ],
+  // [3] Defective ناقص
+  [
+    NAQIS,
+    genSarf("سَمَّى","سَمِّي","ُ","سَمِّ","سُمِّيَ","سَمَّ"),
+    genSarf("نَادَى","نَادِي","ُ","نَادِ","نُودِيَ","نَادَ"),
+    genSarf("أَعْطَى","عْطِي","ُ","أَعْطِ","أُعْطِيَ","عْطَ"),
+    genSarf("تَمَنَّى","تَمَنَّ","َ","تَمَنَّ","تُمُنِّيَ","تَمَنَّ"),
+    genSarf("تَدَاعَى","تَدَاعَ","َ","تَدَاعَ","تُدُوعِيَ","تَدَاعَ"),
+    genSarf("اِنْطَوَى","نْطَوِي","َ","اِنْطَوِ","",""),
+    genSarf("اِدَّعَى","دَّعِي","َ","اِدَّعِ","اُدُّعِيَ","دَّعَ"),
+    STRONG_FORMS[8], // Form IX not applicable for Defective
+    genSarf("اِسْتَدْعَى","سْتَدْعِي","َ","اِسْتَدْعِ","اُسْتُدْعِيَ","سْتَدْعَ"),
+  ],
+  // [4] Doubled مضاعف
+  [
+    MUDAAF,
+    genSarf("رَدَّدَ","رَدِّد","ُ","رَدِّد","رُدِّدَ","رَدَّد"),
+    genSarf("رَادَّ","رَادّ","ُ","رَادِد","رُودَّ","رَادَد"),
+    genSarf("أَحَبَّ","حِبّ","ُ","أَحِبَّ","أُحِبَّ","حَبّ"),
+    genSarf("تَرَدَّدَ","تَرَدَّد","َ","تَرَدَّد","تُرُدِّدَ","تَرَدَّد"),
+    genSarf("تَرَادَّ","تَرَادّ","َ","تَرَادَّ","تُرُودَّ","تَرَادَد"),
+    genSarf("اِنْشَقَّ","نْشَقّ","َ","اِنْشَقِّ","",""),
+    genSarf("اِرْتَدَّ","رْتَدّ","َ","اِرْتَدِّ","اُرْتُدَّ","رْتَدَد"),
+    STRONG_FORMS[8], // Form IX not applicable for Doubled
+    genSarf("اِسْتَرَدَّ","سْتَرِدّ","َ","اِسْتَرِدَّ","اُسْتُرِدَّ","سْتَرَدَد"),
+  ],
+];
+
+const VERB_TYPES = [
+  {
+    label: "سالم (Strong: ف-ع-ل)", data: STRONG,
+    examples: [
+      {ar: "فَعَلَ", sentence: "فَعَلَ مَا يُؤْمَرُ بِهِ", tr: "He did what he was commanded"},
+      {ar: "فَعَّلَ", sentence: "فَعَّلَ القَانُونَ", tr: "He implemented the law"},
+      {ar: "فَاعَلَ", sentence: "فَاعَلَ شَرِيكَهُ بِالخَيْرِ", tr: "He treated his partner well"},
+      {ar: "أَفْعَلَ", sentence: "أَفْعَلَ الأَمْرَ", tr: "He caused the matter to happen"},
+      {ar: "تَفَعَّلَ", sentence: "تَفَعَّلَ الخَيْرَ", tr: "He pursued good"},
+      {ar: "تَفَاعَلَ", sentence: "تَفَاعَلَتِ المَوَادُّ", tr: "The materials reacted mutually"},
+      {ar: "اِنْفَعَلَ", sentence: "اِنْفَعَلَ مِنَ الغَضَبِ", tr: "He became agitated from anger"},
+      {ar: "اِفْتَعَلَ", sentence: "اِفْتَعَلَ المُشْكِلَةَ", tr: "He fabricated the problem"},
+      {ar: "اِفْعَلَّ", sentence: "اِفْعَلَّ لَوْنُهُ", tr: "Its color changed"},
+      {ar: "اِسْتَفْعَلَ", sentence: "اِسْتَفْعَلَهُ الأَمْرَ", tr: "He asked him to do the matter"}
+    ]
+  },
+  {
+    label: "أجوف (Hollow: ق-و-ل)", data: AJWAF,
+    examples: [
+      {ar: "قَالَ", sentence: "قَالَ كَلِمَةَ الحَقِّ", tr: "He spoke the word of truth (Root: ق-و-ل)"},
+      {ar: "زَيَّنَ", sentence: "زَيَّنَ المَنْزِلَ", tr: "He decorated the house (Root: ز-ي-ن)"},
+      {ar: "قَاوَلَ", sentence: "قَاوَلَ التَّاجِرَ فِي السِّعْرِ", tr: "He bargained with the merchant (Root: ق-و-ل)"},
+      {ar: "أَقَالَ", sentence: "أَقَالَ الْمُوَظَّفَ", tr: "He dismissed the employee (Root: ق-و-ل)"},
+      {ar: "تَزَيَّنَ", sentence: "تَزَيَّنَ لِلْحَفْلِ", tr: "He adorned himself for the party (Root: ز-ي-ن)"},
+      {ar: "تَقَاوَلَ", sentence: "تَقَاوَلَ القَوْمُ", tr: "The people discussed mutually (Root: ق-و-ل)"},
+      {ar: "اِنْهَارَ", sentence: "اِنْهَارَ المَبْنَى", tr: "The building collapsed (Root: ه-و-ر)"},
+      {ar: "اِخْتَارَ", sentence: "اِخْتَارَ الطَّرِيقَ", tr: "He chose the path (Root: خ-ي-ر)"},
+      {ar: "اِسْوَدَّ", sentence: "اِسْوَدَّ اللَّيْلُ", tr: "The night turned black (Root: س-و-د)"},
+      {ar: "اِسْتَقَالَ", sentence: "اِسْتَقَالَ مِنْ مَنْصِبِهِ", tr: "He resigned from his position (Root: ق-و-ل)"}
+    ]
+  },
+  {
+    label: "مثال (Assimilated: و-ج-د)", data: MITHAL,
+    examples: [
+      {ar: "وَجَدَ", sentence: "وَجَدَ ضَالَّتَهُ", tr: "He found his lost item (Root: و-ج-د)"},
+      {ar: "وَصَّلَ", sentence: "وَصَّلَ الرِّسَالَةَ", tr: "He delivered/connected the message (Root: و-ص-ل)"},
+      {ar: "وَاصَلَ", sentence: "وَاصَلَ العَمَلَ", tr: "He continued the work (Root: و-ص-ل)"},
+      {ar: "أَوْجَدَ", sentence: "أَوْجَدَ الشَّيْءَ مِنَ العَدَمِ", tr: "He brought the thing into existence (Root: و-ج-د)"},
+      {ar: "تَوَصَّلَ", sentence: "تَوَصَّلَ إِلَى حَلٍّ", tr: "He reached a solution (Root: و-ص-ل)"},
+      {ar: "تَوَاجَدَ", sentence: "تَوَاجَدَ القَوْمُ", tr: "The people were present together (Root: و-ج-د)"},
+      {ar: "اِنْوَجَدَ", sentence: "اِنْوَجَدَ فِي المَكَانِ", tr: "He was found in the place (Root: و-ج-د)"},
+      {ar: "اِتَّصَلَ", sentence: "اِتَّصَلَ بِصَدِيقِهِ", tr: "He contacted his friend (Root: و-ص-ل)"},
+      {ar: "—", sentence: "—", tr: "Not applicable to Assimilated roots"},
+      {ar: "اِسْتَوْعَبَ", sentence: "اِسْتَوْعَبَ الدَّرْسَ", tr: "He comprehended the lesson (Root: و-ع-ب)"}
+    ]
+  },
+  {
+    label: "ناقص (Defective: د-ع-و)", data: NAQIS,
+    examples: [
+      {ar: "دَعَا", sentence: "دَعَا صَدِيقَهُ", tr: "He invited his friend (Root: د-ع-و)"},
+      {ar: "سَمَّى", sentence: "سَمَّى ابْنَهُ", tr: "He named his son (Root: س-م-و)"},
+      {ar: "نَادَى", sentence: "نَادَى بِأَعْلَى صَوْتِهِ", tr: "He called out loudly (Root: ن-د-و)"},
+      {ar: "أَعْطَى", sentence: "أَعْطَى المَالَ", tr: "He gave the money (Root: ع-ط-و)"},
+      {ar: "تَمَنَّى", sentence: "تَمَنَّى الخَيْرَ", tr: "He wished for good (Root: م-ن-ي)"},
+      {ar: "تَدَاعَى", sentence: "تَدَاعَى القَوْمُ لِلنُّصْرَةِ", tr: "The people called each other for help (Root: د-ع-و)"},
+      {ar: "اِنْطَوَى", sentence: "اِنْطَوَى عَلَى نَفْسِهِ", tr: "He became introverted/folded in (Root: ط-و-ي)"},
+      {ar: "اِدَّعَى", sentence: "اِدَّعَى حَقّاً لَيْسَ لَهُ", tr: "He claimed a right that wasn't his (Root: د-ع-و)"},
+      {ar: "—", sentence: "—", tr: "Not applicable to Defective roots"},
+      {ar: "اِسْتَدْعَى", sentence: "اِسْتَدْعَى السَّفِيرَ", tr: "He summoned the ambassador (Root: د-ع-و)"}
+    ]
+  },
+  {
+    label: "مضاعف (Doubled: ر-د-د)", data: MUDAAF,
+    examples: [
+      {ar: "رَدَّ", sentence: "رَدَّ البَابَ", tr: "He closed the door (Root: ر-د-د)"},
+      {ar: "رَدَّدَ", sentence: "رَدَّدَ الأُغْنِيَةَ", tr: "He repeated the song (Root: ر-د-د)"},
+      {ar: "رَادَّ", sentence: "رَادَّهُ فِي الكَلَامِ", tr: "He argued back and forth with him (Root: ر-د-د)"},
+      {ar: "أَحَبَّ", sentence: "أَحَبَّ العَمَلَ", tr: "He loved the work (Root: ح-ب-ب)"},
+      {ar: "تَرَدَّدَ", sentence: "تَرَدَّدَ فِي القَرَارِ", tr: "He hesitated in the decision (Root: ر-د-د)"},
+      {ar: "تَرَادَّ", sentence: "تَرَادَّا البَيْعَ", tr: "They mutually canceled the sale (Root: ر-د-د)"},
+      {ar: "اِنْشَقَّ", sentence: "اِنْشَقَّ القَمَرُ", tr: "The moon split apart (Root: ش-ق-ق)"},
+      {ar: "اِرْتَدَّ", sentence: "اِرْتَدَّ عَنْ دِينِهِ", tr: "He turned back from his religion (Root: ر-د-د)"},
+      {ar: "—", sentence: "—", tr: "Not applicable to Doubled roots"},
+      {ar: "اِسْتَرَدَّ", sentence: "اِسْتَرَدَّ أَمْوَالَهُ", tr: "He reclaimed his money (Root: ر-د-د)"}
+    ]
+  }
+];
 const FORM_RULES=[
-  {num:"I",  pat:"فَعَلَ",   rule:"Base meaning of the root",            ex:"فَعَلَ",   sentence:"فَعَلَ الرَّجُلُ الخَيْرَ",        sentenceTr:"The man did good",                  color:PURPLE},
-  {num:"II", pat:"فَعَّلَ",  rule:"Intensive or causative",              ex:"فَعَّلَ",  sentence:"فَعَّلَ المُعَلِّمُ الدَّرْسَ",    sentenceTr:"The teacher activated the lesson",  color:TEAL},
-  {num:"III",pat:"فَاعَلَ",  rule:"Mutual — action toward another",      ex:"فَاعَلَ",  sentence:"فَاعَلَ الرَّجُلُ صَدِيقَهُ",      sentenceTr:"The man acted alongside his friend",color:TEAL},
-  {num:"IV", pat:"أَفْعَلَ", rule:"Causative — bring about the action",  ex:"أَفْعَلَ", sentence:"أَفْعَلَ الأَمِيرُ الخَيْرَ",      sentenceTr:"The prince brought about good",     color:CORAL},
-  {num:"V",  pat:"تَفَعَّلَ",rule:"Reflexive of II — done to oneself",   ex:"تَفَعَّلَ",sentence:"تَفَعَّلَ العِلْمُ فِي قَلْبِهِ",  sentenceTr:"Knowledge worked into his heart",   color:PINK},
-  {num:"VI", pat:"تَفَاعَلَ",rule:"Reciprocal between parties",          ex:"تَفَاعَلَ",sentence:"تَفَاعَلَ الطَّرَفَانِ",           sentenceTr:"The two parties acted mutually",    color:PINK},
-  {num:"VII",pat:"اِنْفَعَلَ",rule:"Passive — subject receives action",  ex:"اِنْفَعَلَ",sentence:"اِنْفَعَلَ الشَّيْءُ",            sentenceTr:"The thing was acted upon",          color:AMBER},
-  {num:"VIII",pat:"اِفْتَعَلَ",rule:"Reflexive-intensive of I",          ex:"اِفْتَعَلَ",sentence:"اِفْتَعَلَ الفِعْلَ بِجِدٍّ",    sentenceTr:"He performed it with effort",       color:AMBER},
-  {num:"IX", pat:"اِفْعَلَّ", rule:"Colours and physical states only",   ex:"اِفْعَلَّ", sentence:"اِفْعَلَّ لَوْنُهُ",              sentenceTr:"Its colour changed",                color:GRAY},
-  {num:"X",  pat:"اِسْتَفْعَلَ",rule:"To seek or request the action",   ex:"اِسْتَفْعَلَ",sentence:"اِسْتَفْعَلَ الرَّجُلُ الفِعْلَ",sentenceTr:"The man sought the act",           color:BLUE},
+  {idx:0, num:"I",   color:PURPLE, rule:"Base Meaning",        exp:"The default, simple action of the root.", analogy:"A simple closed circuit. The current flows, the action happens.",
+   masdar:"فَعْل / فِعَال / فَعَالَة (varies)", fail:"فَاعِل", mafool:"مَفْعُول"},
+  {idx:1, num:"II",  color:TEAL,   rule:"Intensive / Causative", exp:"Adds intensity, repetition, or causes the action to happen to someone else.", analogy:"An amplifier boosting a signal.",
+   masdar:"تَفْعِيل", fail:"مُفَعِّل", mafool:"مُفَعَّل"},
+  {idx:2, num:"III", color:TEAL,   rule:"Mutual Interaction",   exp:"Action directed at or done mutually with another person.", analogy:"A two-way communication protocol (like TCP) requiring a transmitter and receiver.",
+   masdar:"مُفَاعَلَة / فِعَال", fail:"مُفَاعِل", mafool:"مُفَاعَل"},
+  {idx:3, num:"IV",  color:CORAL,  rule:"Causative (Director)", exp:"You bring about the action in someone or something else.", analogy:"A command signal triggering an external process.",
+   masdar:"إِفْعَال", fail:"مُفْعِل", mafool:"مُفْعَل"},
+  {idx:4, num:"V",   color:PINK,   rule:"Reflexive of II",      exp:"The natural consequence of Form II. If Form II is 'to smash', Form V is 'to become smashed'.", analogy:"The physical reaction to an applied force.",
+   masdar:"تَفَعُّل", fail:"مُتَفَعِّل", mafool:"مُتَفَعَّل"},
+  {idx:5, num:"VI",  color:PINK,   rule:"Reciprocal",           exp:"Two or more parties doing the action together.", analogy:"A peer-to-peer (P2P) network where nodes share data equally.",
+   masdar:"تَفَاعُل", fail:"مُتَفَاعِل", mafool:"مُتَفَاعَل"},
+  {idx:6, num:"VII", color:AMBER,  rule:"Pure Passive",         exp:"The action happened, but the 'doer' is irrelevant. Focuses entirely on the state of the object.", analogy:"A tripped circuit breaker. We care that it snapped, not who tripped it.",
+   masdar:"اِنْفِعَال", fail:"مُنْفَعِل", mafool:"مُنْفَعَل"},
+  {idx:7, num:"VIII",color:AMBER,  rule:"Internal Effort",      exp:"Doing the action for oneself, or acting with deliberate, internal effort.", analogy:"Internal CPU processing before an output is made.",
+   masdar:"اِفْتِعَال", fail:"مُفْتَعِل", mafool:"مُفْتَعَل"},
+  {idx:8, num:"IX",  color:GRAY,   rule:"Colors & Defects",     exp:"Strictly used for transforming into colors or physical defects.", analogy:"A status LED changing state (e.g., from green to red).",
+   masdar:"اِفْعِلَال", fail:"مُفْعَلّ", mafool:"—"},
+  {idx:9, num:"X",   color:BLUE,   rule:"The Seeker",           exp:"Seeking, requesting, or deeming the base action.", analogy:"A client sending an HTTP GET request.",
+   masdar:"اِسْتِفْعَال", fail:"مُسْتَفْعِل", mafool:"مُسْتَفْعَل"},
 ];
 
 // ── ARABIC KEYBOARD OVERLAY ──────────────────────────────────────
 const KB_ROWS=[["ض","ص","ث","ق","ف","غ","ع","ه","خ","ح","ج","د"],["ش","س","ي","ب","ل","ا","ت","ن","م","ك","ط"],["ئ","ء","ؤ","ر","لا","ى","ة","و","ز","ظ","ذ"]];
 const HARAKAT=["َ","ِ","ُ","ً","ٍ","ٌ","ْ","ّ"];
+if(typeof document!=="undefined"&&!document.getElementById("mic-pulse-style")){const s=document.createElement("style");s.id="mic-pulse-style";s.textContent="@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)}70%{box-shadow:0 0 0 8px rgba(239,68,68,0)}}";document.head.appendChild(s);}
+const useSpeech=(lang:string)=>{
+  const [listening,setListening]=useState(false);
+  const recRef=useRef<any>(null);
+  const supported=typeof window!=="undefined"&&!!((window as any).SpeechRecognition||(window as any).webkitSpeechRecognition);
+  const start=(cb:(t:string)=>void)=>{
+    if(!supported)return;
+    const SR=(window as any).SpeechRecognition||(window as any).webkitSpeechRecognition;
+    const r=new SR();r.lang=lang;r.continuous=false;r.interimResults=false;
+    r.onresult=(e:any)=>{setListening(false);cb(e.results[0][0].transcript);};
+    r.onerror=()=>setListening(false);r.onend=()=>setListening(false);
+    recRef.current=r;r.start();setListening(true);
+  };
+  const stop=()=>{recRef.current?.stop();setListening(false);};
+  return{supported,listening,start,stop};
+};
 const KBOverlay=({label,initial,onConfirm,onClose}:{label:string;initial?:string;onConfirm:(v:string)=>void;onClose:()=>void})=>{
   const [val,setVal]=useState(initial||"");
   const [cur,setCur]=useState((initial||"").length);
   const [showH,setShowH]=useState(true);
+  const speech=useSpeech("ar-SA");
   const ins=(k:string)=>{const nv=val.slice(0,cur)+k+val.slice(cur);setVal(nv);setCur(cur+k.length);};
   const bk=()=>{if(!cur)return;setVal(val.slice(0,cur-1)+val.slice(cur));setCur(c=>Math.max(0,c-1));};
   const mv=(d:number)=>setCur(c=>Math.max(0,Math.min(val.length,c+d)));
@@ -169,6 +436,7 @@ const KBOverlay=({label,initial,onConfirm,onClose}:{label:string;initial?:string
           <button onClick={bk} style={ks({flex:2,fontSize:13,color:AMBER.text,background:AMBER.bg})}>⌫</button>
           <button onClick={()=>{setVal("");setCur(0);}} style={ks({flex:2,fontSize:11,color:CORAL.text,background:CORAL.bg})}>مسح</button>
           <button onClick={()=>setShowH(s=>!s)} style={ks({flex:2,fontSize:10,color:TEAL.text,background:TEAL.bg})}>{showH?"إخفاء":"حركات"}</button>
+          <button onClick={()=>{if(speech.listening)speech.stop();else speech.start(t=>{setVal(t);setCur(t.length);});}} style={ks({flex:2,fontSize:14,background:speech.listening?"#7f1d1d":"transparent",color:speech.listening?"#ef4444":C.muted,border:`0.5px solid ${speech.listening?"#ef4444":C.borderMed}`,animation:speech.listening?"micPulse 1s ease-in-out infinite":"none"})}>{speech.listening?"🔴":"🎤"}</button>
           <button onClick={()=>val.trim()&&onConfirm(val)} style={ks({flex:4,background:PURPLE.bg,color:PURPLE.text,fontSize:13,fontWeight:500})}>تأكيد ←</button>
         </div>
       </div>
@@ -176,10 +444,12 @@ const KBOverlay=({label,initial,onConfirm,onClose}:{label:string;initial?:string
   );
 };
 
+
 // ── SARF TABLE (reference + fill-in) ────────────────────────────
 const MOODS=[{key:"marfu",ar:"مرفوع"},{key:"mansub",ar:"منصوب"},{key:"majzum",ar:"مجزوم"}];
 const SarfTable=({data}:{data:typeof STRONG})=>{
   const [mode,setMode]=useState<"view"|"fill">("view");
+  const [useCanvas,setUseCanvas]=useState(false);
   const [answers,setAnswers]=useState<Record<string,string>>({});
   const [checked,setChecked]=useState(false);
   const [overlay,setOverlay]=useState<{key:string;label:string;target:string;store:string;field?:string}|null>(null);
@@ -188,42 +458,68 @@ const SarfTable=({data}:{data:typeof STRONG})=>{
   const [bottom,setBottom]=useState({masdar:"",fail:"",mafool:""});
   const [bottomChecked,setBottomChecked]=useState(false);
   const ck=(s:string,m:string,i:number)=>`${s}_${m}_${i}`;
-  const isOk=(k:string,t:string)=>{const a=(answers[k]||"").trim();return a===t||fuzzy(a,t)>=0.85;};
-  const isOk2=(a:string,t:string)=>{const v=(a||"").trim();return v===t||fuzzy(v,t)>=0.85;};
-  const total=MOODS.length*PRONOUNS.length*2;
-  const correct=checked?Object.keys(answers).filter(k=>{const[s,m,i]=k.split("_");return isOk(k,(data as any)[s][m][parseInt(i)]);}).length:0;
+  const total=(MOODS.length+1)*PRONOUNS.length*2;
+  const correct=checked?Object.keys(answers).filter(k=>{const[s,m,i]=k.split("_");return checkAr(answers[k]||"",(data as any)[s][m][parseInt(i)]);}).length:0;
+  const amrCorrect=checked?Object.keys(amrAns).filter(k=>checkAr(amrAns[k]||"",data.amr[parseInt(k.split("_")[1])])).length:0;
+  
   if(amrPage)return(
     <div>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
-        <Btn onClick={()=>setAmrPage(false)} sm col={GRAY}>← Back</Btn>
-        <p style={{fontSize:15,fontWeight:500,color:C.text,margin:0}}>فِعل الأمر — {data.display}</p>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <Btn onClick={()=>setAmrPage(false)} sm col={GRAY}>← Back</Btn>
+          <p style={{fontSize:15,fontWeight:500,color:C.text,margin:0}}>فِعل الأمر — {data.display}</p>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          <Btn onClick={()=>{setMode(m=>m==="fill"?"view":"fill");setChecked(false);setAmrAns({});}} col={mode==="fill"?TEAL:PURPLE} sm>{mode==="fill"?"View mode":"Fill in"}</Btn>
+          {mode==="fill"&&<button onClick={()=>setUseCanvas(s=>!s)} style={{background:useCanvas?BLUE.bg:"transparent",border:`0.5px solid ${useCanvas?BLUE.text:C.borderMed}`,borderRadius:8,padding:"5px 10px",fontSize:11,color:useCanvas?BLUE.text:C.muted,cursor:"pointer"}}>{useCanvas?"✏ Canvas":"⌨ Keyboard"}</button>}
+          {mode==="fill"&&<Btn onClick={()=>setChecked(true)} col={TEAL} sm>Check ✓</Btn>}
+          {checked&&<Btn onClick={()=>{setAmrAns({});setChecked(false);}} col={AMBER} sm>Reset</Btn>}
+        </div>
       </div>
       <AccentBar color={TEAL.text}>Only المخاطب pronouns take الأمر — you cannot command an absent person.</AccentBar>
+      {checked&&<div style={{background:PURPLE.bg,borderRadius:8,padding:"8px 14px",marginBottom:10}}><p style={{fontSize:13,color:PURPLE.text,margin:0}}>Score: {amrCorrect}/{AMR_PRONOUNS.length} — {Math.round(amrCorrect/AMR_PRONOUNS.length*100)}%</p></div>}
       <Card>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}} dir="rtl">
           <thead><tr style={{borderBottom:`0.5px solid ${C.border}`}}>
-            <th style={{padding:"6px 10px",color:C.muted,fontWeight:500,textAlign:"left"}}>المخاطب</th>
-            <th style={{padding:"6px 10px",color:TEAL.text,fontWeight:500,textAlign:"right"}}>الأمر</th>
-            <th style={{padding:"6px 10px",color:C.muted,fontWeight:500,textAlign:"center"}}>Your answer</th>
+            <th style={{padding:"6px 10px",color:C.muted,fontWeight:500,textAlign:"right"}}>المخاطب</th>
+            {mode==="view"?<th style={{padding:"6px 10px",color:TEAL.text,fontWeight:500,textAlign:"center"}}>الأمر</th>:<th style={{padding:"6px 10px",color:C.muted,fontWeight:500,textAlign:"center"}}>Your answer</th>}
           </tr></thead>
           <tbody>{AMR_PRONOUNS.map((pr,i)=>{
             const k=`amr_${i}`;const ans=amrAns[k]||"";
+            const ok=checked?checkAr(ans,data.amr[i]):null;
             return(<tr key={i} style={{borderBottom:`0.5px solid ${C.border}`}}>
-              <td style={{padding:"8px 10px"}}><span style={{direction:"rtl",display:"block",color:C.text,fontSize:14}}>{pr.ar}</span><span style={{fontSize:11,color:C.muted}}>{pr.sub}</span></td>
-              <td style={{padding:"8px 10px",textAlign:"right",direction:"rtl",fontSize:16,color:TEAL.text}}>{data.amr[i]}</td>
-              <td style={{padding:"4px 8px",textAlign:"center"}}>
-                <button onClick={()=>setOverlay({key:k,label:`الأمر — ${pr.ar}`,target:data.amr[i],store:"amr"})}
-                  style={{background:ans?PURPLE.bg:C.surface2,border:`0.5px solid ${ans?PURPLE.text:C.border}`,borderRadius:6,padding:"6px 12px",cursor:"pointer",color:ans?PURPLE.text:C.muted,fontSize:14,direction:"rtl",minWidth:80}}>
-                  {ans||<span style={{fontSize:11}}>tap to fill</span>}
-                </button>
-              </td>
+              <td style={{padding:"8px 10px",textAlign:"right"}}><span style={{direction:"rtl",display:"block",color:C.text,fontSize:14}}>{pr.ar}</span><span style={{fontSize:11,color:C.muted}}>{pr.sub}</span></td>
+              {mode==="view"?(
+                <td style={{padding:"8px 10px",textAlign:"center",direction:"rtl",fontSize:16,color:TEAL.text}}>{data.amr[i]}</td>
+              ):(
+                <td style={{padding:"4px 8px",textAlign:"center"}}>
+                  <button onClick={()=>setOverlay({key:k,label:`الأمر — ${pr.ar}`,target:data.amr[i],store:"amr"})}
+                    style={{background:checked?(ok?TEAL.bg:CORAL.bg):ans?PURPLE.bg:C.surface2,border:`0.5px solid ${checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.border}`,borderRadius:6,padding:"6px 12px",cursor:"pointer",color:checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.muted,fontSize:14,direction:"rtl",minWidth:80}}>
+                    {ans||<span style={{fontSize:11}}>tap to fill</span>}
+                  </button>
+                </td>
+              )}
             </tr>);
           })}</tbody>
         </table>
       </Card>
-      {overlay&&<KBOverlay label={overlay.label} initial={amrAns[overlay.key]||""} onConfirm={v=>{setAmrAns(a=>({...a,[overlay.key]:v}));setOverlay(null);}} onClose={()=>setOverlay(null)}/>}
+      {overlay&&(useCanvas?(
+        <div style={{position:"fixed",inset:0,zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
+          <div onClick={()=>setOverlay(null)} style={{position:"absolute",inset:0,backdropFilter:"blur(6px)",background:"rgba(0,0,0,0.7)"}}/>
+          <div style={{position:"relative",width:"100%",maxWidth:600,background:C.surface,borderRadius:"16px 16px 0 0",padding:"1rem"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <p style={{fontSize:12,color:C.muted,margin:0}}>{overlay.label}</p>
+              <button onClick={()=>setOverlay(null)} style={{background:"none",border:"none",color:C.muted,fontSize:18,cursor:"pointer"}}>✕</button>
+            </div>
+            <DrawCanvas targetWord={overlay.target} hideTarget onResult={v=>{if(v==="correct")setAmrAns(a=>({...a,[overlay.key]:overlay.target}));setOverlay(null);}}/>
+          </div>
+        </div>
+      ):(
+        <KBOverlay label={overlay.label} initial={amrAns[overlay.key]||""} onConfirm={v=>{setAmrAns(a=>({...a,[overlay.key]:v}));setOverlay(null);}} onClose={()=>setOverlay(null)}/>
+      ))}
     </div>
   );
+
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
@@ -232,52 +528,75 @@ const SarfTable=({data}:{data:typeof STRONG})=>{
           <span style={{fontSize:13,color:C.muted,marginLeft:10}}>{data.meaning}</span>
           {(data as any).weakType&&<Pill label={(data as any).weakType} color={AMBER}/>}
         </div>
-        <div style={{display:"flex",gap:6}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <Btn onClick={()=>{setMode(m=>m==="fill"?"view":"fill");setChecked(false);setAnswers({});}} col={mode==="fill"?TEAL:PURPLE} sm>{mode==="fill"?"View mode":"Fill in"}</Btn>
+          {mode==="fill"&&<button onClick={()=>setUseCanvas(s=>!s)} style={{background:useCanvas?BLUE.bg:"transparent",border:`0.5px solid ${useCanvas?BLUE.text:C.borderMed}`,borderRadius:8,padding:"5px 10px",fontSize:11,color:useCanvas?BLUE.text:C.muted,cursor:"pointer"}}>{useCanvas?"✏ Canvas":"⌨ Keyboard"}</button>}
           {mode==="fill"&&<Btn onClick={()=>setChecked(true)} col={TEAL} sm>Check ✓</Btn>}
           {checked&&<Btn onClick={()=>{setAnswers({});setChecked(false);}} col={AMBER} sm>Reset</Btn>}
         </div>
       </div>
       {(data as any).weakNote&&<AccentBar color={AMBER.text}>{(data as any).weakNote}</AccentBar>}
       {checked&&<div style={{background:PURPLE.bg,borderRadius:8,padding:"8px 14px",marginBottom:10}}><p style={{fontSize:13,color:PURPLE.text,margin:0}}>Score: {correct}/{total} — {Math.round(correct/total*100)}%</p></div>}
-      <div style={{overflowX:"auto",marginBottom:12}}>
-        <table style={{borderCollapse:"collapse",fontSize:12,minWidth:720}}>
+      <div style={{overflowX:"auto",marginBottom:12}} dir="rtl">
+        <table style={{borderCollapse:"collapse",fontSize:12,minWidth:720,direction:"rtl"}}>
           <thead><tr style={{borderBottom:`0.5px solid ${C.border}`}}>
-            <th style={{padding:"6px 8px",color:C.muted,fontWeight:500,textAlign:"left",width:130}}>الضمير</th>
-            {MOODS.map(m=><th key={m.key+"a"} style={{padding:"6px 8px",color:TEAL.text,fontWeight:500,textAlign:"right",minWidth:90}}><span style={{direction:"rtl",display:"block"}}>{m.ar}</span><span style={{fontSize:10,color:C.muted}}>معلوم</span></th>)}
-            {MOODS.map(m=><th key={m.key+"p"} style={{padding:"6px 8px",color:CORAL.text,fontWeight:500,textAlign:"right",minWidth:90}}><span style={{direction:"rtl",display:"block"}}>{m.ar}</span><span style={{fontSize:10,color:C.muted}}>مجهول</span></th>)}
+            <th style={{padding:"6px 8px",color:C.muted,fontWeight:500,textAlign:"right",width:130}}>الضمير</th>
+            <th style={{padding:"6px 8px",color:TEAL.text,fontWeight:500,textAlign:"center",minWidth:90}}><span style={{direction:"rtl",display:"block"}}>ماضي</span><span style={{fontSize:10,color:C.muted}}>معلوم</span></th>
+            {MOODS.map(m=><th key={m.key+"a"} style={{padding:"6px 8px",color:TEAL.text,fontWeight:500,textAlign:"center",minWidth:90}}><span style={{direction:"rtl",display:"block"}}>{m.ar}</span><span style={{fontSize:10,color:C.muted}}>معلوم</span></th>)}
+            <th style={{padding:"6px 8px",color:CORAL.text,fontWeight:500,textAlign:"center",minWidth:90}}><span style={{direction:"rtl",display:"block"}}>ماضي</span><span style={{fontSize:10,color:C.muted}}>مجهول</span></th>
+            {MOODS.map(m=><th key={m.key+"p"} style={{padding:"6px 8px",color:CORAL.text,fontWeight:500,textAlign:"center",minWidth:90}}><span style={{direction:"rtl",display:"block"}}>{m.ar}</span><span style={{fontSize:10,color:C.muted}}>مجهول</span></th>)}
           </tr></thead>
           <tbody>{PRONOUNS.map((pr,i)=>{
             const gc=gramColor(pr.gram);const isFirst=i===0||PRONOUNS[i-1].gram!==pr.gram;
             return(<tr key={i} style={{borderBottom:`0.5px solid ${C.border}`,background:i%2===0?"transparent":"rgba(255,255,255,0.01)"}}>
-              <td style={{padding:"5px 8px",borderLeft:isFirst?`2px solid ${gc.text}`:"2px solid transparent"}}>
+              <td style={{padding:"5px 8px",borderRight:isFirst?`2px solid ${gc.text}`:"2px solid transparent"}}>
                 <span style={{direction:"rtl",display:"block",fontSize:14,color:C.text}}>{pr.ar}</span>
                 <span style={{fontSize:10,color:gc.text,fontWeight:500}}>{pr.gram}</span>
                 <span style={{fontSize:10,color:C.muted,display:"block"}}>{pr.sub}</span>
               </td>
+              <td style={{padding:"3px 5px"}}>
+                {mode==="fill"?(
+                  <button onClick={()=>setOverlay({key:`active_past_${i}`,label:`ماضي معلوم — ${pr.ar}`,target:data.active.past[i],store:"main"})}
+                    style={{width:"100%",background:checked?(checkAr(answers[`active_past_${i}`]||"",data.active.past[i])?TEAL.bg:CORAL.bg):answers[`active_past_${i}`]?PURPLE.bg:C.surface2,border:`0.5px solid ${checked?(checkAr(answers[`active_past_${i}`]||"",data.active.past[i])?TEAL.text:CORAL.text):answers[`active_past_${i}`]?PURPLE.text:C.border}`,borderRadius:5,padding:"5px 4px",cursor:"pointer",color:checked?(checkAr(answers[`active_past_${i}`]||"",data.active.past[i])?TEAL.text:CORAL.text):answers[`active_past_${i}`]?PURPLE.text:C.muted,fontSize:13,direction:"rtl",textAlign:"center",minWidth:70}}>
+                    {answers[`active_past_${i}`]||<span style={{fontSize:10}}>tap</span>}
+                  </button>
+                ):(
+                  <div style={{direction:"rtl",textAlign:"center",fontSize:14,color:TEAL.text,padding:"5px 6px",background:C.surface2,borderRadius:5}}>{data.active.past[i]}</div>
+                )}
+              </td>
               {MOODS.map(m=>{
-                const k=ck("active",m.key,i);const ans=answers[k]||"";const ok=checked?isOk(k,data.active[m.key as keyof typeof data.active][i]):null;
+                const k=ck("active",m.key,i);const ans=answers[k]||"";const ok=checked?checkAr(ans,data.active[m.key as keyof typeof data.active][i]):null;
                 return(<td key={m.key+"a"} style={{padding:"3px 5px"}}>
                   {mode==="fill"?(
                     <button onClick={()=>setOverlay({key:k,label:`معلوم ${m.ar} — ${pr.ar}`,target:data.active[m.key as keyof typeof data.active][i],store:"main"})}
-                      style={{width:"100%",background:checked?(ok?TEAL.bg:CORAL.bg):ans?PURPLE.bg:C.surface2,border:`0.5px solid ${checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.border}`,borderRadius:5,padding:"5px 4px",cursor:"pointer",color:checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.muted,fontSize:13,direction:"rtl",textAlign:"right",minWidth:70}}>
+                      style={{width:"100%",background:checked?(ok?TEAL.bg:CORAL.bg):ans?PURPLE.bg:C.surface2,border:`0.5px solid ${checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.border}`,borderRadius:5,padding:"5px 4px",cursor:"pointer",color:checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.muted,fontSize:13,direction:"rtl",textAlign:"center",minWidth:70}}>
                       {ans||<span style={{fontSize:10}}>tap</span>}
                     </button>
                   ):(
-                    <div style={{direction:"rtl",textAlign:"right",fontSize:14,color:TEAL.text,padding:"5px 6px",background:C.surface2,borderRadius:5}}>{data.active[m.key as keyof typeof data.active][i]}</div>
+                    <div style={{direction:"rtl",textAlign:"center",fontSize:14,color:TEAL.text,padding:"5px 6px",background:C.surface2,borderRadius:5}}>{data.active[m.key as keyof typeof data.active][i]}</div>
                   )}
                 </td>);
               })}
+              <td style={{padding:"3px 5px"}}>
+                {mode==="fill"?(
+                  <button onClick={()=>setOverlay({key:`passive_past_${i}`,label:`ماضي مجهول — ${pr.ar}`,target:data.passive.past[i],store:"main"})}
+                    style={{width:"100%",background:checked?(checkAr(answers[`passive_past_${i}`]||"",data.passive.past[i])?TEAL.bg:CORAL.bg):answers[`passive_past_${i}`]?PURPLE.bg:C.surface2,border:`0.5px solid ${checked?(checkAr(answers[`passive_past_${i}`]||"",data.passive.past[i])?TEAL.text:CORAL.text):answers[`passive_past_${i}`]?PURPLE.text:C.border}`,borderRadius:5,padding:"5px 4px",cursor:"pointer",color:checked?(checkAr(answers[`passive_past_${i}`]||"",data.passive.past[i])?TEAL.text:CORAL.text):answers[`passive_past_${i}`]?PURPLE.text:C.muted,fontSize:13,direction:"rtl",textAlign:"center",minWidth:70}}>
+                    {answers[`passive_past_${i}`]||<span style={{fontSize:10}}>tap</span>}
+                  </button>
+                ):(
+                  <div style={{direction:"rtl",textAlign:"center",fontSize:14,color:CORAL.text,padding:"5px 6px",background:C.surface2,borderRadius:5}}>{data.passive.past[i]}</div>
+                )}
+              </td>
               {MOODS.map(m=>{
-                const k=ck("passive",m.key,i);const ans=answers[k]||"";const ok=checked?isOk(k,data.passive[m.key as keyof typeof data.passive][i]):null;
+                const k=ck("passive",m.key,i);const ans=answers[k]||"";const ok=checked?checkAr(ans,data.passive[m.key as keyof typeof data.passive][i]):null;
                 return(<td key={m.key+"p"} style={{padding:"3px 5px"}}>
                   {mode==="fill"?(
                     <button onClick={()=>setOverlay({key:k,label:`مجهول ${m.ar} — ${pr.ar}`,target:data.passive[m.key as keyof typeof data.passive][i],store:"main"})}
-                      style={{width:"100%",background:checked?(ok?TEAL.bg:CORAL.bg):ans?PURPLE.bg:C.surface2,border:`0.5px solid ${checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.border}`,borderRadius:5,padding:"5px 4px",cursor:"pointer",color:checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.muted,fontSize:13,direction:"rtl",textAlign:"right",minWidth:70}}>
+                      style={{width:"100%",background:checked?(ok?TEAL.bg:CORAL.bg):ans?PURPLE.bg:C.surface2,border:`0.5px solid ${checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.border}`,borderRadius:5,padding:"5px 4px",cursor:"pointer",color:checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.muted,fontSize:13,direction:"rtl",textAlign:"center",minWidth:70}}>
                       {ans||<span style={{fontSize:10}}>tap</span>}
                     </button>
                   ):(
-                    <div style={{direction:"rtl",textAlign:"right",fontSize:14,color:CORAL.text,padding:"5px 6px",background:C.surface2,borderRadius:5}}>{data.passive[m.key as keyof typeof data.passive][i]}</div>
+                    <div style={{direction:"rtl",textAlign:"center",fontSize:14,color:CORAL.text,padding:"5px 6px",background:C.surface2,borderRadius:5}}>{data.passive[m.key as keyof typeof data.passive][i]}</div>
                   )}
                 </td>);
               })}
@@ -296,7 +615,7 @@ const SarfTable=({data}:{data:typeof STRONG})=>{
           const targets=[data.masdar,data.fail,data.mafool];
           const cols=[PURPLE,TEAL,CORAL];
           const ans=bottom[field as keyof typeof bottom];
-          const ok=bottomChecked?isOk2(ans,targets[fi]):null;
+          const ok=bottomChecked?checkAr(ans,targets[fi]):null;
           return(<button key={field} onClick={()=>mode==="fill"&&setOverlay({key:`bottom_${field}`,label:labels[fi],target:targets[fi],store:"bottom",field})}
             style={{background:bottomChecked?(ok?cols[fi].bg:CORAL.bg):ans?cols[fi].bg:C.surface2,border:`0.5px solid ${bottomChecked?(ok?cols[fi].text:CORAL.text):ans?cols[fi].text:C.border}`,borderRadius:8,padding:"8px 10px",cursor:mode==="fill"?"pointer":"default",textAlign:"center"}}>
             <p style={{fontSize:10,color:bottomChecked?(ok?cols[fi].text:CORAL.text):cols[fi].text,margin:"0 0 3px",fontWeight:500}}>{labels[fi]}</p>
@@ -312,14 +631,34 @@ const SarfTable=({data}:{data:typeof STRONG})=>{
         <Btn onClick={()=>setBottomChecked(true)} col={TEAL} sm>Check bottom row</Btn>
         {bottomChecked&&<Btn onClick={()=>{setBottom({masdar:"",fail:"",mafool:""});setBottomChecked(false);}} col={AMBER} sm>Reset</Btn>}
       </div>}
-      {overlay&&<KBOverlay label={overlay.label} initial={overlay.store==="bottom"?bottom[overlay.field as keyof typeof bottom]||"":overlay.store==="amr"?amrAns[overlay.key]||"":answers[overlay.key]||""}
-        onConfirm={v=>{
-          if(overlay.store==="bottom")setBottom(b=>({...b,[overlay.field!]:v}));
-          else if(overlay.store==="amr")setAmrAns(a=>({...a,[overlay.key]:v}));
-          else setAnswers(a=>({...a,[overlay.key]:v}));
-          setOverlay(null);
-        }}
-        onClose={()=>setOverlay(null)}/>}
+      {overlay&&(useCanvas?(
+        <div style={{position:"fixed",inset:0,zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
+          <div onClick={()=>setOverlay(null)} style={{position:"absolute",inset:0,backdropFilter:"blur(6px)",background:"rgba(0,0,0,0.7)"}}/>
+          <div style={{position:"relative",width:"100%",maxWidth:600,background:C.surface,borderRadius:"16px 16px 0 0",padding:"1rem"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <p style={{fontSize:12,color:C.muted,margin:0}}>{overlay.label}</p>
+              <button onClick={()=>setOverlay(null)} style={{background:"none",border:"none",color:C.muted,fontSize:18,cursor:"pointer"}}>✕</button>
+            </div>
+            <DrawCanvas targetWord={overlay.target} hideTarget onResult={v=>{
+              if(v==="correct"){
+                if(overlay.store==="bottom")setBottom(b=>({...b,[overlay.field!]:overlay.target}));
+                else if(overlay.store==="amr")setAmrAns(a=>({...a,[overlay.key]:overlay.target}));
+                else setAnswers(a=>({...a,[overlay.key]:overlay.target}));
+              }
+              setOverlay(null);
+            }}/>
+          </div>
+        </div>
+      ):(
+        <KBOverlay label={overlay.label} initial={overlay.store==="bottom"?bottom[overlay.field as keyof typeof bottom]||"":overlay.store==="amr"?amrAns[overlay.key]||"":answers[overlay.key]||""}
+          onConfirm={v=>{
+            if(overlay.store==="bottom")setBottom(b=>({...b,[overlay.field!]:v}));
+            else if(overlay.store==="amr")setAmrAns(a=>({...a,[overlay.key]:v}));
+            else setAnswers(a=>({...a,[overlay.key]:v}));
+            setOverlay(null);
+          }}
+          onClose={()=>setOverlay(null)}/>
+      ))}
     </div>
   );
 };
@@ -327,58 +666,119 @@ const SarfTable=({data}:{data:typeof STRONG})=>{
 // ── FORM RULES TAB ────────────────────────────────────────────────
 const FormRulesTab=()=>{
   const [selected,setSelected]=useState<typeof FORM_RULES[0]|null>(null);
+  const [showCanvas,setShowCanvas]=useState(false);
+  const [activeType, setActiveType]=useState(VERB_TYPES[0]);
+  
+  const handleSelect=(f:typeof FORM_RULES[0])=>{
+    if(activeType.examples[f.idx].ar === "—") return;
+    const same=selected?.idx===f.idx;
+    setSelected(same?null:f);
+    setShowCanvas(false);
+  };
+
   return(
     <div>
-      <SL>10 form rules — all use the ف-ع-ل placeholder root</SL>
-      <AccentBar>Every form uses the same root so the pattern change is immediately visible. Tap any row to open its full sarf table and example sentence.</AccentBar>
+      <SL>10 Form Rules — Examples by Verb Type</SL>
+      <AccentBar>Select a root type below, then tap any of the 10 form rules to read its logic and see authentic Arabic examples.</AccentBar>
+      
+      <div style={{display:"flex",gap:8,overflowX:"auto",marginBottom:16,paddingBottom:4}}>
+        {VERB_TYPES.map(vt => (
+          <button key={vt.label} onClick={()=>{setActiveType(vt);setSelected(null);setShowCanvas(false);}}
+            style={{background:activeType.label===vt.label?PURPLE.bg:C.surface,border:`0.5px solid ${activeType.label===vt.label?PURPLE.text:C.borderMed}`,borderRadius:8,padding:"6px 14px",fontSize:13,color:activeType.label===vt.label?PURPLE.text:C.muted,cursor:"pointer",whiteSpace:"nowrap"}}>
+            {vt.label}
+          </button>
+        ))}
+      </div>
+
       {selected&&(
         <div style={{marginBottom:16}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:6}}>
             <Pill label={`Form ${selected.num}`} color={selected.color}/>
-            <Btn onClick={()=>setSelected(null)} sm col={GRAY}>Close ✕</Btn>
+            <div style={{display:"flex",gap:6}}>
+              <Btn onClick={()=>setShowCanvas(s=>!s)} sm col={showCanvas?GRAY:selected.color}>{showCanvas?"Close canvas ✕":"Practice writing ✏"}</Btn>
+              <Btn onClick={()=>{setSelected(null);setShowCanvas(false);}} sm col={GRAY}>Close ✕</Btn>
+            </div>
           </div>
-          <SarfTable data={STRONG}/>
+          
+          {/* EXPLANATION SLIDE */}
+          <Card style={{marginBottom:10, borderLeft:`3px solid ${selected.color.text}`}}>
+            <p style={{fontSize:15, fontWeight:500, color:selected.color.text, margin:"0 0 6px"}}>Form {selected.num} — {selected.rule}</p>
+            <p style={{fontSize:13, color:C.text, margin:"0 0 10px", lineHeight:1.6}}>{selected.exp}</p>
+            <div style={{background:"rgba(255,255,255,0.03)", padding:"8px 12px", borderRadius:6}}>
+              <p style={{fontSize:12, color:C.muted, margin:0}}><strong>Analogy:</strong> {selected.analogy}</p>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:12}}>
+              {([
+                [PURPLE,"مَصْدَر","Verbal Noun",selected.masdar],
+                [TEAL,"اِسْم فَاعِل","Active Participle",selected.fail],
+                [CORAL,"اِسْم مَفْعُول","Passive Participle",selected.mafool],
+              ] as [typeof PURPLE,string,string,string][]).map(([col,ar,en,val])=>(
+                <div key={ar} style={{background:col.bg,borderRadius:6,padding:"6px 8px"}}>
+                  <p style={{fontSize:9,color:col.text,margin:"0 0 1px",fontWeight:500}}>{ar}</p>
+                  <p style={{fontSize:9,color:col.text,margin:"0 0 4px",opacity:0.7}}>{en}</p>
+                  <p style={{fontSize:14,direction:"rtl",color:col.text,margin:0,fontWeight:600}}>{val}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <SarfTable data={VERB_TYPE_FORMS[VERB_TYPES.indexOf(activeType)][selected.idx]}/>
+          
+          {showCanvas&&(
+            <Card style={{marginBottom:10}}>
+              <p style={{fontSize:13,fontWeight:500,color:C.text,margin:"0 0 8px"}}>Practice writing: <span style={{direction:"rtl",color:selected.color.text,fontSize:18}}>{activeType.examples[selected.idx].ar}</span></p>
+              <DrawCanvas targetWord={activeType.examples[selected.idx].ar} onResult={()=>setShowCanvas(false)}/>
+            </Card>
+          )}
           <Card style={{marginTop:10}}>
-            <p style={{fontSize:13,fontWeight:500,color:C.text,margin:"0 0 6px"}}>Example — Form {selected.num}</p>
-            <p style={{fontSize:18,direction:"rtl",color:selected.color.text,margin:"0 0 4px",lineHeight:1.8}}>{selected.sentence}</p>
-            <p style={{fontSize:12,color:C.muted,margin:0}}>{selected.sentenceTr}</p>
+            <p style={{fontSize:13,fontWeight:500,color:C.text,margin:"0 0 6px"}}>Dictionary Example</p>
+            <p style={{fontSize:18,direction:"rtl",color:selected.color.text,margin:"0 0 4px",lineHeight:1.8}}>{activeType.examples[selected.idx].sentence}</p>
+            <p style={{fontSize:12,color:C.muted,margin:0}}>{activeType.examples[selected.idx].tr}</p>
           </Card>
         </div>
       )}
+      
       <div style={{display:"flex",flexDirection:"column",gap:5}}>
-        {FORM_RULES.map(f=>(
-          <button key={f.num} onClick={()=>setSelected(selected?.num===f.num?null:f)}
-            style={{background:selected?.num===f.num?f.color.bg:C.surface,border:`0.5px solid ${selected?.num===f.num?f.color.text:C.border}`,borderRadius:10,padding:"10px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.15s"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,flexWrap:"wrap",gap:6}}>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <Pill label={`Form ${f.num}`} color={f.color}/>
-                <span style={{fontSize:17,direction:"rtl",color:f.color.text}}>{f.pat}</span>
-                <span style={{fontSize:13,color:C.muted}}>— {f.rule}</span>
+        {FORM_RULES.map(f=>{
+          const ex = activeType.examples[f.idx];
+          const isRare = ex.ar === "—";
+          return(
+            <button key={f.idx} onClick={()=>handleSelect(f)}
+              style={{background:selected?.idx===f.idx?f.color.bg:C.surface,border:`0.5px solid ${selected?.idx===f.idx?f.color.text:C.border}`,borderRadius:10,padding:"10px 14px",cursor:isRare?"not-allowed":"pointer",textAlign:"left",transition:"all 0.15s", opacity: isRare ? 0.4 : 1}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,flexWrap:"wrap",gap:6}}>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <Pill label={`Form ${f.num}`} color={f.color}/>
+                  <span style={{fontSize:17,direction:"rtl",color:f.color.text}}>{ex.ar}</span>
+                  <span style={{fontSize:13,color:C.muted}}>— {f.rule}</span>
+                </div>
               </div>
-              <span style={{fontSize:16,direction:"rtl",color:C.text}}>{f.ex}</span>
-            </div>
-            <p style={{fontSize:12,direction:"rtl",color:C.muted,margin:0,textAlign:"right"}}>{f.sentence} <span style={{color:C.subtle}}>({f.sentenceTr})</span></p>
-          </button>
-        ))}
+              <p style={{fontSize:12,direction:"rtl",color:C.muted,margin:0,textAlign:"right"}}>{ex.sentence} <span style={{color:C.subtle}}>({ex.tr})</span></p>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 };
-
 // ── DRAWING CANVAS ────────────────────────────────────────────────
-const DrawCanvas=({targetWord,onResult}:{targetWord:string;onResult:(r:string)=>void})=>{
+const DrawCanvas=({targetWord,onResult,hideTarget}:{targetWord:string;onResult:(r:string)=>void;hideTarget?:boolean})=>{
   const canvasRef=useRef<HTMLCanvasElement>(null);
   const drawing=useRef(false);
   const lastPos=useRef<{x:number;y:number}|null>(null);
+  const history=useRef<ImageData[]>([]);
+  const historyIdx=useRef(-1);
   const [checked,setChecked]=useState(false);
   const [aiResult,setAiResult]=useState<{result:string;read:string;note:string}|null>(null);
   const [loading,setLoading]=useState(false);
   const [showTarget,setShowTarget]=useState(true);
   const [tool,setTool]=useState("pen");
-
-  const CANVAS_W=600;
-  const CANVAS_H=180;
-  
+  const [canUndo,setCanUndo]=useState(false);
+  const [canRedo,setCanRedo]=useState(false);
+  const CANVAS_W=600;const CANVAS_H=180;
+  const saveState=()=>{const c=canvasRef.current;if(!c)return;const img=c.getContext("2d")!.getImageData(0,0,c.width,c.height);history.current=history.current.slice(0,historyIdx.current+1);history.current.push(img);historyIdx.current=history.current.length-1;setCanUndo(historyIdx.current>0);setCanRedo(false);};
+  const undo=()=>{if(historyIdx.current<=0)return;historyIdx.current--;canvasRef.current!.getContext("2d")!.putImageData(history.current[historyIdx.current],0,0);setCanUndo(historyIdx.current>0);setCanRedo(true);};
+  const redo=()=>{if(historyIdx.current>=history.current.length-1)return;historyIdx.current++;canvasRef.current!.getContext("2d")!.putImageData(history.current[historyIdx.current],0,0);setCanUndo(true);setCanRedo(historyIdx.current<history.current.length-1);};
+  useEffect(()=>{const c=canvasRef.current;if(!c)return;const ctx=c.getContext("2d")!;history.current=[ctx.getImageData(0,0,c.width,c.height)];historyIdx.current=0;},[]);
   const getPos=(e:React.MouseEvent|React.TouchEvent,c:HTMLCanvasElement)=>{
     const r=c.getBoundingClientRect();const sx=c.width/r.width;const sy=c.height/r.height;
     if("touches" in e)return{x:(e.touches[0].clientX-r.left)*sx,y:(e.touches[0].clientY-r.top)*sy};
@@ -386,38 +786,33 @@ const DrawCanvas=({targetWord,onResult}:{targetWord:string;onResult:(r:string)=>
   };
   const start=(e:React.MouseEvent|React.TouchEvent)=>{
     e.preventDefault();const c=canvasRef.current!;const ctx=c.getContext("2d")!;const p=getPos(e,c);lastPos.current=p;drawing.current=true;
-    ctx.beginPath();ctx.arc(p.x,p.y,tool==="eraser"?12:2.5,0,Math.PI*2);ctx.fillStyle=tool==="eraser"?"#111":"#CECBF6";ctx.fill();
+    ctx.beginPath();ctx.arc(p.x,p.y,tool==="eraser"?12:2.5,0,Math.PI*2);ctx.fillStyle=tool==="eraser"?"#FFFFFF":"#1a1a1a";ctx.fill();
   };
   const move=(e:React.MouseEvent|React.TouchEvent)=>{
     e.preventDefault();if(!drawing.current||!lastPos.current)return;
     const c=canvasRef.current!;const ctx=c.getContext("2d")!;const p=getPos(e,c);
     ctx.beginPath();ctx.moveTo(lastPos.current.x,lastPos.current.y);ctx.lineTo(p.x,p.y);
-    ctx.lineWidth=tool==="eraser"?24:4.5;ctx.lineCap="round";ctx.lineJoin="round";
-    ctx.strokeStyle=tool==="eraser"?"#111":"#CECBF6";ctx.stroke();lastPos.current=p;
+    ctx.lineWidth=tool==="eraser"?24:5;ctx.lineCap="round";ctx.lineJoin="round";
+    ctx.strokeStyle=tool==="eraser"?"#FFFFFF":"#1a1a1a";ctx.stroke();lastPos.current=p;
   };
-  const end=(e:React.MouseEvent|React.TouchEvent)=>{e.preventDefault();drawing.current=false;lastPos.current=null;};
-  const clearCanvas=()=>{
-    const c=canvasRef.current;
-    if(!c)return;
-    const ctx=c.getContext("2d");
-    if(!ctx)return; // This line fixes the TS18047 error
-    ctx.clearRect(0,0,c.width,c.height);
-    setChecked(false);
-    setAiResult(null);
-  };
- 
+  const end=(e:React.MouseEvent|React.TouchEvent)=>{e.preventDefault();if(drawing.current)saveState();drawing.current=false;lastPos.current=null;};
+  const clearCanvas=()=>{const c=canvasRef.current!;const ctx=c.getContext("2d")!;ctx.clearRect(0,0,c.width,c.height);setChecked(false);setAiResult(null);history.current=[ctx.getImageData(0,0,c.width,c.height)];historyIdx.current=0;setCanUndo(false);setCanRedo(false);};
   const checkWithAI=async()=>{
-    const c=canvasRef.current;
-    if(!c) return;
+    const c=canvasRef.current!;
     
+    // Convert to solid background for AI
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = c.width;
     tempCanvas.height = c.height;
     const tCtx = tempCanvas.getContext("2d");
     if(tCtx) {
-      tCtx.fillStyle = "#111111";
-      tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
       tCtx.drawImage(c, 0, 0);
+      tCtx.globalCompositeOperation = "source-in";
+      tCtx.fillStyle = "#000000";
+      tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tCtx.globalCompositeOperation = "destination-over";
+      tCtx.fillStyle = "#FFFFFF";
+      tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
     }
     const base64 = tempCanvas.toDataURL("image/png").split(",")[1];
 
@@ -432,7 +827,7 @@ const DrawCanvas=({targetWord,onResult}:{targetWord:string;onResult:(r:string)=>
         body:JSON.stringify({
           contents:[{
             parts:[
-              {text:`The student was trying to write the Arabic word: ${targetWord}. If canvas is blank say BLANK. Otherwise read and compare. Be lenient with handwriting and completely ignore missing vowel marks (harakat). Reply:\nRESULT: [CORRECT/CLOSE/WRONG/BLANK]\nREAD: [what you read]\nNOTE: [one short encouraging sentence]`},
+              {text:`The student is learning Arabic and tried to write: ${targetWord}. Arabic is written right-to-left. Harakat (vowel marks) may be missing. Judge leniently on stroke quality — focus on whether the core letters are recognizable. If canvas is blank say BLANK. Reply:\nRESULT: [CORRECT/CLOSE/WRONG/BLANK]\nREAD: [what you see]\nNOTE: [one short encouraging sentence]`},
               {inline_data:{mime_type:"image/png",data:base64}}
             ]
           }],
@@ -448,29 +843,29 @@ const DrawCanvas=({targetWord,onResult}:{targetWord:string;onResult:(r:string)=>
         read:txt.match(/READ:\s*(.+)/)?.[1]||"",
         note:txt.match(/NOTE:\s*(.+)/)?.[1]||""
       });
-    }catch(e: any){
-      console.error(e);
-      setAiResult({result:"ERROR",read:"",note: e.message});
+    }catch(e:any){
+      setAiResult({result:"ERROR",read:"",note:e.message});
     }
     setLoading(false);setChecked(true);
   };
-
   const rc=(r:string)=>r==="CORRECT"?TEAL:r==="CLOSE"?AMBER:r==="BLANK"?GRAY:CORAL;
   return(
     <div>
-      <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
+      {!hideTarget&&<div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
         <Btn onClick={()=>setShowTarget(s=>!s)} sm col={GRAY}>{showTarget?"Hide target":"Show target"}</Btn>
-      </div>
-      {showTarget&&<div style={{background:C.surface2,borderRadius:8,padding:"10px 16px",marginBottom:8,textAlign:"center"}}><span style={{fontSize:36,direction:"rtl",color:PURPLE.text,lineHeight:1.8}}>{targetWord}</span></div>}
+      </div>}
+      {!hideTarget&&showTarget&&<div style={{background:C.surface2,borderRadius:8,padding:"10px 16px",marginBottom:8,textAlign:"center"}}><span style={{fontSize:36,direction:"rtl",color:PURPLE.text,lineHeight:1.8}}>{targetWord}</span></div>}
       <div style={{position:"relative"}}>
-            <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H}
-              onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
-              onTouchStart={start} onTouchMove={move} onTouchEnd={end}
-              style={{width:"100%", height:CANVAS_H, background:"#111", borderRadius:10, border:"2px dashed #555", cursor:tool==="eraser"?"cell":"crosshair", touchAction:"none", display:"block"}}/>
-          </div>
+        <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H}
+          onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
+          onTouchStart={start} onTouchMove={move} onTouchEnd={end}
+          style={{width:"100%",height:CANVAS_H,background:"#FFFFFF",borderRadius:10,border:`2px dashed #555`,cursor:tool==="eraser"?"cell":"crosshair",touchAction:"none",display:"block"}}/>
+      </div>
       <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
         <button onClick={()=>setTool("pen")} style={{background:tool==="pen"?PURPLE.bg:"transparent",border:`0.5px solid ${tool==="pen"?PURPLE.text:C.borderMed}`,borderRadius:8,padding:"5px 12px",fontSize:12,color:tool==="pen"?PURPLE.text:C.muted,cursor:"pointer"}}>✏ Pen</button>
         <button onClick={()=>setTool("eraser")} style={{background:tool==="eraser"?AMBER.bg:"transparent",border:`0.5px solid ${tool==="eraser"?AMBER.text:C.borderMed}`,borderRadius:8,padding:"5px 12px",fontSize:12,color:tool==="eraser"?AMBER.text:C.muted,cursor:"pointer"}}>◻ Eraser</button>
+        <button onClick={undo} disabled={!canUndo} style={{background:canUndo?BLUE.bg:"transparent",border:`0.5px solid ${canUndo?BLUE.text:C.borderMed}`,borderRadius:8,padding:"5px 12px",fontSize:12,color:canUndo?BLUE.text:C.muted,cursor:canUndo?"pointer":"not-allowed",opacity:canUndo?1:0.45}}>↩ Undo</button>
+        <button onClick={redo} disabled={!canRedo} style={{background:canRedo?BLUE.bg:"transparent",border:`0.5px solid ${canRedo?BLUE.text:C.borderMed}`,borderRadius:8,padding:"5px 12px",fontSize:12,color:canRedo?BLUE.text:C.muted,cursor:canRedo?"pointer":"not-allowed",opacity:canRedo?1:0.45}}>↪ Redo</button>
         <Btn onClick={checkWithAI} col={PURPLE} sm disabled={loading}>{loading?"Checking…":"Check with AI ✓"}</Btn>
         <Btn onClick={clearCanvas} col={AMBER} sm>Clear all</Btn>
         <Btn onClick={()=>onResult("correct")} col={TEAL} sm>I wrote it correctly ✓</Btn>
@@ -491,35 +886,39 @@ const DrawCanvas=({targetWord,onResult}:{targetWord:string;onResult:(r:string)=>
 // ── STEP BAR ──────────────────────────────────────────────────────
 const VERB_STEPS=["Meaning","Write","Conjugation","Write Sarf","Contexts"];
 const NOUN_STEPS=["Meaning","Write","Plurals","Synonyms","Contexts"];
-const StepBar=({steps,current,completed}:{steps:string[];current:number;completed:number[]})=>(
-  <div style={{display:"flex",gap:0,marginBottom:16}}>
-    {steps.map((s,i)=>{const done=completed.includes(i);const active=i===current;return(
-      <div key={s} style={{flex:1,textAlign:"center"}}>
-        <div style={{height:3,background:done?TEAL.text:active?PURPLE.text:C.surface2,transition:"background 0.3s"}}/>
-        <p style={{fontSize:10,color:done?TEAL.text:active?PURPLE.text:C.muted,margin:"4px 0 0",fontWeight:active||done?500:400}}>{s}</p>
-      </div>
-    );})}
-  </div>
-);
+const StepBar=({steps,current,completed,onStepClick}:{steps:string[];current:number;completed:number[];onStepClick:(s:number)=>void})=>{
+  const maxUnlocked = Math.max(-1, ...completed) + 1;
+  return(
+    <div style={{display:"flex",gap:0,marginBottom:16}}>
+      {steps.map((s,i)=>{
+        const done=completed.includes(i);
+        const active=i===current;
+        const locked=i>maxUnlocked;
+        return(
+          <div key={s} onClick={()=>!locked&&onStepClick(i)} style={{flex:1,textAlign:"center",cursor:locked?"not-allowed":"pointer",opacity:locked?0.4:1}}>
+            <div style={{height:3,background:done?TEAL.text:active?PURPLE.text:C.surface2,transition:"background 0.3s"}}/>
+            <p style={{fontSize:10,color:done?TEAL.text:active?PURPLE.text:C.muted,margin:"4px 0 0",fontWeight:active||done?500:400}}>{s}{locked&&" 🔒"}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
+// ── BOTTOM EXAMPLES (masdar / ism fail / ism mafool per verb) ────
 const BOTTOM_EXAMPLES={
   kataba:{
     masdar:[
       {form:"كِتَابَة",meaning:"the act of writing",ex:"الكِتَابَةُ فَنٌّ جَمِيل",tr:"Writing is a beautiful art",note:"Process/act of writing"},
-      {form:"كَتْب",meaning:"writing as inscription/decree",ex:"كَتْبُ اللهِ لِعِبَادِهِ",tr:"Allah's decree for His servants",note:"Used in Quranic/classical contexts for divine decree"},
+      {form:"كَتْب",meaning:"writing as inscription / decree",ex:"كَتْبُ اللهِ لِعِبَادِهِ",tr:"Allah's decree for His servants",note:"Used in Quranic/classical contexts for divine decree"},
     ],
     fail:[{form:"كَاتِب",meaning:"writer / one who writes",ex:"هُوَ كَاتِبٌ مَاهِر",tr:"He is a skilled writer",note:null}],
     mafool:[{form:"مَكْتُوب",meaning:"that which is written / a letter",ex:"هَذَا مَكْتُوبٌ مِنَ الأُسْتَاذ",tr:"This is a letter from the professor",note:"Also means 'destined/fated' in colloquial use"}],
   },
-  darasa:{
-    masdar:[{form:"دِرَاسَة",meaning:"study / studying",ex:"الدِّرَاسَةُ تَحْتَاجُ إِلَى صَبْر",tr:"Study requires patience",note:null}],
-    fail:[{form:"دَارِس",meaning:"student / one who studies",ex:"هُوَ دَارِسٌ لِلُّغَةِ العَرَبِيَّة",tr:"He is a student of the Arabic language",note:null}],
-    mafool:[{form:"مَدْرُوس",meaning:"studied / examined",ex:"هَذَا المَوْضُوعُ مَدْرُوسٌ جَيِّدًا",tr:"This topic is well studied",note:null}],
-  },
   alima:{
     masdar:[
-      {form:"عِلْم",meaning:"knowledge as a state/body of knowledge",ex:"العِلْمُ نُورٌ",tr:"Knowledge is light",note:"The state of knowing — used for divine and human knowledge"},
-      {form:"مَعْرِفَة",meaning:"experiential/practical knowing",ex:"لَدَيْهِ مَعْرِفَةٌ بِالطَّبِّ",tr:"He has knowledge of medicine",note:"From عَرَفَ — knowing through experience, not عَلِمَ. Different root but closely related in meaning"},
+      {form:"عِلْم",meaning:"knowledge as a state / body of knowledge",ex:"العِلْمُ نُورٌ",tr:"Knowledge is light",note:"The state of knowing — used for divine and human knowledge"},
+      {form:"مَعْرِفَة",meaning:"experiential / practical knowing",ex:"لَدَيْهِ مَعْرِفَةٌ بِالطَّبِّ",tr:"He has knowledge of medicine",note:"From عَرَفَ — knowing through experience, not عَلِمَ. Different root but closely related in meaning"},
     ],
     fail:[
       {form:"عَالِم",meaning:"scholar / one who knows",ex:"هُوَ عَالِمٌ فِي الفِقْه",tr:"He is a scholar of fiqh",note:"Plural: عُلَمَاء — the scholars"},
@@ -542,153 +941,125 @@ const BOTTOM_EXAMPLES={
   },
 };
 
-const BottomBox=({label,col,items}: any)=>{
-  const [open,setOpen]=useState(false);
-  const [writeIdx,setWriteIdx]=useState<number | null>(null);
-  return(
-    <div style={{marginBottom:8}}>
-      <button onClick={()=>setOpen(o=>!o)}
-        style={{width:"100%",background:open?col.bg:C.surface2,border:`0.5px solid ${open?col.text:C.border}`,borderRadius:8,padding:"8px 12px",cursor:"pointer",textAlign:"left",transition:"all 0.15s"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <p style={{fontSize:11,color:col.text,margin:0,fontWeight:500}}>{label}</p>
-          <span style={{fontSize:16,direction:"rtl",color:col.text}}>{items.map((x: any)=>x.form).join(" / ")}</span>
-          <span style={{fontSize:12,color:col.text,opacity:0.7}}>{open?"▲":"▼"}</span>
-        </div>
-      </button>
-      {open&&(
-        <div style={{background:C.surface,border:`0.5px solid ${C.border}`,borderRadius:"0 0 8px 8px",padding:"10px 14px"}}>
-          {items.map((item: any,idx: number)=>(
-            <div key={idx} style={{marginBottom:idx<items.length-1?14:0,paddingBottom:idx<items.length-1?14:0,borderBottom:idx<items.length-1?`0.5px solid ${C.border}`:"none"}}>
-              <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
-                <span style={{fontSize:20,direction:"rtl",color:col.text,fontWeight:500}}>{item.form}</span>
-                <span style={{fontSize:13,color:C.muted}}>— {item.meaning}</span>
-              </div>
-              <p style={{fontSize:15,direction:"rtl",color:C.text,margin:"0 0 3px",lineHeight:1.8}}>{item.ex}</p>
-              <p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>{item.tr}</p>
-              {item.note&&<div style={{background:AMBER.bg,borderRadius:6,padding:"5px 10px",marginBottom:8}}><p style={{fontSize:12,color:AMBER.text,margin:0}}>{item.note}</p></div>}
-              {writeIdx===idx?(
-                <div>
-                  <p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>Write: <span style={{direction:"rtl",color:col.text}}>{item.form}</span></p>
-                  <DrawCanvas targetWord={item.form} onResult={()=>setWriteIdx(null)}/>
-                </div>
-              ):(
-                <Btn onClick={()=>setWriteIdx(idx)} col={col} sm>✏ Write this form</Btn>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const AMR_IDX = [6, 7, 8, 9, 10];
-
-const SarfWriteTable=({word,onDone}: any)=>{
+// ── SARF WRITE TABLE ─────────────────────────────────────────────
+const AMR_IDX=[6,7,8,9,10];
+const SarfWriteTable=({word,onDone}:{word:Verb;onDone:()=>void})=>{
   const [answers,setAnswers]=useState<Record<string,string>>({});
   const [checked,setChecked]=useState(false);
-  const [overlay,setOverlay]=useState<{key:string, target:string, label:string} | null>(null);
+  const [overlay,setOverlay]=useState<{key:string;target:string;label:string}|null>(null);
   const [useCanvas,setUseCanvas]=useState(false);
+  const isAmr=(i:number)=>AMR_IDX.includes(i);
+  const amrForm=(i:number)=>{const idx=AMR_IDX.indexOf(i);return["اِفْعَلْ","اِفْعَلِي","اِفْعَلَا","اِفْعَلُوا","اِفْعَلْنَ"][idx]||"—";};
+  const presentMansub=(i:number)=>deriveMansub(getConjugation(word).present[i]);
+  const presentMajzum=(i:number)=>deriveMajzum(getConjugation(word).present[i]);
 
-  const isAmr=(i: number)=>AMR_IDX.includes(i);
-  const amrForm=(i: number)=>{
-    const amrIdx=AMR_IDX.indexOf(i);
-    return word.id==="qala"
-      ?["قُلْ","قُولِي","قُولَا","قُولُوا","قُلْنَ"][amrIdx]
-      :["اُفْعَلْ","اُفْعَلِي","اُفْعَلَا","اُفْعَلُوا","اُفْعَلْنَ"][amrIdx];
+  // Calculate total required answers including passive if it exists
+  const total = PRONOUNS.length * 4 + AMR_IDX.length + (word.conjugation?.passive ? PRONOUNS.length * 4 : 0);
+
+  const correct = checked ?
+    PRONOUNS.reduce((acc, _, i) =>
+      acc + (checkAr(answers[`past_${i}`] || "", getConjugation(word).past[i]) ? 1 : 0)
+          + (checkAr(answers[`marfu_${i}`] || "", getConjugation(word).present[i]) ? 1 : 0)
+          + (checkAr(answers[`mansub_${i}`] || "", presentMansub(i)) ? 1 : 0)
+          + (checkAr(answers[`majzum_${i}`] || "", presentMajzum(i)) ? 1 : 0)
+          + (word.conjugation?.passive ? (
+              (checkAr(answers[`p_past_${i}`] || "", word.conjugation.passive.past[i]) ? 1 : 0)
+            + (checkAr(answers[`p_marfu_${i}`] || "", word.conjugation.passive.present[i]) ? 1 : 0)
+            + (checkAr(answers[`p_mansub_${i}`] || "", deriveMansub(word.conjugation.passive.present[i])) ? 1 : 0)
+            + (checkAr(answers[`p_majzum_${i}`] || "", deriveMajzum(word.conjugation.passive.present[i])) ? 1 : 0)
+          ) : 0)
+    , 0) + AMR_IDX.reduce((acc, i) => acc + (checkAr(answers[`amr_${i}`] || "", amrForm(i)) ? 1 : 0), 0)
+  : 0;
+
+  const mkCell=(k:string,target:string,pr:{ar:string})=>{
+    const ans=answers[k]||"";const ok=checked?checkAr(ans,target):null;
+    return(<td key={k} style={{padding:"3px 5px"}}>
+      <button onClick={()=>setOverlay({key:k,target,label:pr.ar})}
+        style={{width:"100%",minWidth:70,background:checked?(ok?TEAL.bg:CORAL.bg):ans?PURPLE.bg:C.surface2,border:`0.5px solid ${checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.border}`,borderRadius:5,padding:"5px 4px",cursor:"pointer",color:checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.muted,fontSize:13,direction:"rtl",textAlign:"center"}}>
+        {ans||<span style={{fontSize:10}}>tap</span>}
+      </button>
+    </td>);
   };
-
-  const isOk=(k: string,t: string)=>{const a=(answers[k]||"").trim();return a===t||fuzzy(a,t)>=0.85;};
-  const total=PRONOUNS.length*3+AMR_IDX.length; 
-  const correct=checked?
-    PRONOUNS.reduce((acc: number, _: any, i: number)=>{
-      const pk=`past_${i}`,prk=`present_${i}`;
-      return acc+(isOk(pk,getConjugation(word).past[i])?1:0)+(isOk(prk,getConjugation(word).present[i])?1:0);
-    },0)+AMR_IDX.reduce((acc: number, i: number)=>acc+(isOk(`amr_${i}`,amrForm(i))?1:0),0):0;
-
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
         <p style={{fontSize:14,fontWeight:500,color:C.text,margin:0}}>Fill in the sarf of <span style={{direction:"rtl",color:PURPLE.text}}>{word.ar}</span></p>
-        <div style={{display:"flex",gap:6}}>
-          <button onClick={()=>setUseCanvas(s=>!s)} style={{background:useCanvas?BLUE.bg:"transparent",border:`0.5px solid ${useCanvas?BLUE.text:C.borderMed}`,borderRadius:8,padding:"5px 10px",fontSize:11,color:useCanvas?BLUE.text:C.muted,cursor:"pointer"}}>{useCanvas?"✏ Canvas mode":"⌨ Keyboard mode"}</button>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          <button onClick={()=>setUseCanvas(s=>!s)} style={{background:useCanvas?BLUE.bg:"transparent",border:`0.5px solid ${useCanvas?BLUE.text:C.borderMed}`,borderRadius:8,padding:"5px 10px",fontSize:11,color:useCanvas?BLUE.text:C.muted,cursor:"pointer"}}>{useCanvas?"✏ Canvas":"⌨ Keyboard"}</button>
           <Btn onClick={()=>setChecked(true)} col={TEAL} sm>Check ✓</Btn>
           {checked&&<Btn onClick={()=>{setAnswers({});setChecked(false);}} col={AMBER} sm>Reset</Btn>}
         </div>
       </div>
       {checked&&<div style={{background:PURPLE.bg,borderRadius:8,padding:"8px 14px",marginBottom:10}}><p style={{fontSize:13,color:PURPLE.text,margin:0}}>Score: {correct}/{total} — {Math.round(correct/total*100)}%</p></div>}
-      <div style={{overflowX:"auto",marginBottom:12}}>
-        <table style={{borderCollapse:"collapse",fontSize:12,minWidth:360}}>
-          <thead><tr style={{borderBottom:`0.5px solid ${C.border}`}}>
-            <th style={{padding:"6px 8px",color:C.muted,fontWeight:500,textAlign:"left",minWidth:110}}>الضمير</th>
-            <th style={{padding:"6px 8px",color:TEAL.text,fontWeight:500,textAlign:"right",minWidth:90}}>ماضي</th>
-            <th style={{padding:"6px 8px",color:PURPLE.text,fontWeight:500,textAlign:"right",minWidth:90}}>مضارع</th>
-            <th style={{padding:"6px 8px",color:BLUE.text,fontWeight:500,textAlign:"right",minWidth:90}}>أمر</th>
-          </tr></thead>
+      
+      {/* ── ACTIVE + PASSIVE FILL-IN (side by side) ── */}
+      <div style={{overflowX:"auto",marginBottom:12}} dir="rtl">
+        <table style={{borderCollapse:"collapse",fontSize:12,direction:"rtl"}}>
+          <thead>
+            <tr>
+              <th rowSpan={2} style={{padding:"6px 8px",color:C.muted,fontWeight:500,textAlign:"right",minWidth:110,verticalAlign:"bottom",borderBottom:`0.5px solid ${C.border}`}}>الضمير</th>
+              <th colSpan={word.conjugation.passive?5:5} style={{padding:"4px 8px",color:TEAL.text,fontWeight:600,textAlign:"center",borderBottom:`0.5px solid ${TEAL.text}`,borderLeft:`0.5px solid ${C.border}`}}>معلوم</th>
+              {word.conjugation.passive&&<th colSpan={4} style={{padding:"4px 8px",color:CORAL.text,fontWeight:600,textAlign:"center",borderBottom:`0.5px solid ${CORAL.text}`,borderLeft:`2px solid ${C.borderMed}`}}>مجهول</th>}
+            </tr>
+            <tr style={{borderBottom:`0.5px solid ${C.border}`}}>
+              <th style={{padding:"4px 5px",color:TEAL.text,fontWeight:500,textAlign:"center",minWidth:68,borderLeft:`0.5px solid ${C.border}`}}>ماضي</th>
+              <th style={{padding:"4px 5px",color:PURPLE.text,fontWeight:500,textAlign:"center",minWidth:68}}>مرفوع</th>
+              <th style={{padding:"4px 5px",color:CORAL.text,fontWeight:500,textAlign:"center",minWidth:68}}>منصوب</th>
+              <th style={{padding:"4px 5px",color:AMBER.text,fontWeight:500,textAlign:"center",minWidth:68}}>مجزوم</th>
+              <th style={{padding:"4px 5px",color:BLUE.text,fontWeight:500,textAlign:"center",minWidth:68}}>أمر</th>
+              {word.conjugation.passive&&<>
+                <th style={{padding:"4px 5px",color:CORAL.text,fontWeight:500,textAlign:"center",minWidth:68,borderLeft:`2px solid ${C.borderMed}`}}>ماضي</th>
+                <th style={{padding:"4px 5px",color:CORAL.text,fontWeight:500,textAlign:"center",minWidth:68}}>مرفوع</th>
+                <th style={{padding:"4px 5px",color:CORAL.text,fontWeight:500,textAlign:"center",minWidth:68}}>منصوب</th>
+                <th style={{padding:"4px 5px",color:CORAL.text,fontWeight:500,textAlign:"center",minWidth:68}}>مجزوم</th>
+              </>}
+            </tr>
+          </thead>
           <tbody>{PRONOUNS.map((pr,i)=>{
-            const gc=gramColor(pr.gram);
-            const isFirst=i===0||PRONOUNS[i-1].gram!==pr.gram;
-            const canAmr=isAmr(i);
-            const mkCell=(k: string,target: string,col: string)=>{
-              const ans=answers[k]||"";
-              const ok=checked?isOk(k,target):null;
-              return(
-                <td style={{padding:"3px 5px"}}>
-                  <button onClick={()=>setOverlay({key:k,target,label:`${pr.ar} — ${col==="ماضي"?"past":col==="مضارع"?"present":"أمر"}`})}
-                    style={{width:"100%",minWidth:80,background:checked?(ok?TEAL.bg:CORAL.bg):ans?PURPLE.bg:C.surface2,border:`0.5px solid ${checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.border}`,borderRadius:5,padding:"5px 4px",cursor:"pointer",color:checked?(ok?TEAL.text:CORAL.text):ans?PURPLE.text:C.muted,fontSize:13,direction:"rtl",textAlign:"right"}}>
-                    {ans||<span style={{fontSize:10}}>tap</span>}
-                  </button>
-                </td>
-              );
-            };
-            return(
-              <tr key={i} style={{borderBottom:`0.5px solid ${C.border}`}}>
-                <td style={{padding:"5px 8px",borderLeft:isFirst?`2px solid ${gc.text}`:"2px solid transparent"}}>
-                  <span style={{direction:"rtl",display:"block",fontSize:13,color:C.text}}>{pr.ar}</span>
-                  <span style={{fontSize:10,color:gc.text}}>{pr.gram} · {pr.sub}</span>
-                </td>
-                {mkCell(`past_${i}`,getConjugation(word).past[i],"ماضي")}
-                {mkCell(`present_${i}`,getConjugation(word).present[i],"مضارع")}
-                <td style={{padding:"3px 5px"}}>
-                  {canAmr?mkCell(`amr_${i}`,amrForm(i),"أمر").props.children:
-                    <div style={{textAlign:"center",fontSize:16,color:C.subtle}}>—</div>}
-                </td>
-              </tr>
-            );
+            const gc=gramColor(pr.gram);const isFirst=i===0||PRONOUNS[i-1].gram!==pr.gram;const canAmr=isAmr(i);
+            const hasPas=!!word.conjugation?.passive;
+            return(<tr key={i} style={{borderBottom:`0.5px solid ${C.border}`}}>
+              <td style={{padding:"5px 8px",borderRight:isFirst?`2px solid ${gc.text}`:"2px solid transparent"}}>
+                <span style={{direction:"rtl",display:"block",fontSize:13,color:C.text}}>{pr.ar}</span>
+                <span style={{fontSize:10,color:gc.text}}>{pr.gram} · {pr.sub}</span>
+              </td>
+              {mkCell(`past_${i}`,getConjugation(word).past[i],pr)}
+              {mkCell(`marfu_${i}`,getConjugation(word).present[i],pr)}
+              {mkCell(`mansub_${i}`,presentMansub(i),pr)}
+              {mkCell(`majzum_${i}`,presentMajzum(i),pr)}
+              {canAmr
+                ? mkCell(`amr_${i}`,amrForm(i),pr)
+                : <td style={{padding:"3px 5px",textAlign:"center",fontSize:16,color:C.subtle}}>—</td>}
+              {hasPas&&<>
+                <td style={{padding:"2px 3px",borderLeft:`2px solid ${C.borderMed}`}}>{mkCell(`p_past_${i}`,word.conjugation!.passive!.past[i],pr)}</td>
+                <td style={{padding:"2px 3px"}}>{mkCell(`p_marfu_${i}`,word.conjugation!.passive!.present[i],pr)}</td>
+                <td style={{padding:"2px 3px"}}>{mkCell(`p_mansub_${i}`,deriveMansub(word.conjugation!.passive!.present[i]),pr)}</td>
+                <td style={{padding:"2px 3px"}}>{mkCell(`p_majzum_${i}`,deriveMajzum(word.conjugation!.passive!.present[i]),pr)}</td>
+              </>}
+            </tr>);
           })}</tbody>
         </table>
       </div>
+      {!word.conjugation.passive&&<AccentBar color={CORAL.text}>Passive data not found in verbs.ts for this word. Add it to practice passive conjugations!</AccentBar>}
 
-      {/* bottom boxes */}
-      {(BOTTOM_EXAMPLES as any)[word.id]&&(
-        <div style={{marginTop:8}}>
-          <SL>Tap to explore examples and write</SL>
-          <BottomBox label="مَصْدَر" col={PURPLE} items={(BOTTOM_EXAMPLES as any)[word.id].masdar}/>
-          <BottomBox label="اسم فاعل" col={TEAL} items={(BOTTOM_EXAMPLES as any)[word.id].fail}/>
-          <BottomBox label="اسم مفعول" col={CORAL} items={(BOTTOM_EXAMPLES as any)[word.id].mafool}/>
-        </div>
-      )}
-
-      <Btn onClick={onDone} col={TEAL} full>Done with sarf ✓ — next</Btn>
-
-      {overlay&&(
-        useCanvas?(
-          <div style={{position:"fixed",inset:0,zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
-            <div onClick={()=>setOverlay(null)} style={{position:"absolute",inset:0,backdropFilter:"blur(6px)",background:"rgba(0,0,0,0.7)"}}/>
-            <div style={{position:"relative",width:"100%",maxWidth:600,background:C.surface,borderRadius:"16px 16px 0 0",padding:"1rem"}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-                <p style={{fontSize:12,color:C.muted,margin:0}}>{overlay.label}</p>
-                <button onClick={()=>setOverlay(null)} style={{background:"none",border:"none",color:C.muted,fontSize:18,cursor:"pointer"}}>✕</button>
-              </div>
-              <DrawCanvas targetWord={overlay.target} onResult={(v: string)=>{if(v==="correct")setAnswers(a=>({...a,[overlay.key]:overlay.target}));setOverlay(null);}}/>
+      <Btn onClick={onDone} col={TEAL} full disabled={!checked || correct < total}>
+        {checked && correct === total ? "Perfect! Done with sarf ✓ — next" : "Check answers and score 100% to advance 🔒"}
+      </Btn>
+      
+      {overlay&&(useCanvas?(
+        <div style={{position:"fixed",inset:0,zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
+          <div onClick={()=>setOverlay(null)} style={{position:"absolute",inset:0,backdropFilter:"blur(6px)",background:"rgba(0,0,0,0.7)"}}/>
+          <div style={{position:"relative",width:"100%",maxWidth:600,background:C.surface,borderRadius:"16px 16px 0 0",padding:"1rem"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <p style={{fontSize:12,color:C.muted,margin:0}}>{overlay.label}</p>
+              <button onClick={()=>setOverlay(null)} style={{background:"none",border:"none",color:C.muted,fontSize:18,cursor:"pointer"}}>✕</button>
             </div>
+            <DrawCanvas targetWord={overlay.target} hideTarget onResult={v=>{if(v==="correct")setAnswers(a=>({...a,[overlay.key]:overlay.target}));setOverlay(null);}}/>
           </div>
-        ):(
-          <KBOverlay label={overlay.label} initial={answers[overlay.key]||""}
-            onConfirm={(v: string)=>{setAnswers(a=>({...a,[overlay.key]:v}));setOverlay(null);}}
-            onClose={()=>setOverlay(null)}/>
-        )
-      )}
+        </div>
+      ):(
+        <KBOverlay label={overlay.label} initial={answers[overlay.key]||""} onConfirm={v=>{setAnswers(a=>({...a,[overlay.key]:v}));setOverlay(null);}} onClose={()=>setOverlay(null)}/>
+      ))}
     </div>
   );
 };
@@ -702,7 +1073,7 @@ const VerbLearn=({word,learned,onComplete,isReview,initialStep,onStepChange}:{wo
   const advance=(s:number)=>{markDone(s);const next=s+1;if(next<VERB_STEPS.length){setStep(next);onStepChange?.(next);}};
   const goStep=(s:number)=>{setStep(s);onStepChange?.(s);};
   if(step===0)return(<div>
-    <StepBar steps={VERB_STEPS} current={0} completed={completed}/>
+    <StepBar steps={VERB_STEPS} current={0} completed={completed} onStepClick={goStep}/>
     <Card>
       <div style={{textAlign:"center",padding:"1rem 0"}}>
         <p style={{fontSize:40,direction:"rtl",color:C.text,margin:"0 0 6px",lineHeight:1.6}}>{word.ar}</p>
@@ -722,42 +1093,115 @@ const VerbLearn=({word,learned,onComplete,isReview,initialStep,onStepChange}:{wo
     <Btn onClick={()=>advance(0)} col={PURPLE} full>I understand the meaning → next</Btn>
   </div>);
   if(step===1)return(<div>
-    <StepBar steps={VERB_STEPS} current={1} completed={completed}/>
+    <StepBar steps={VERB_STEPS} current={1} completed={completed} onStepClick={goStep}/>
     <Card><p style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 12px"}}>Practice writing: <span style={{direction:"rtl",color:PURPLE.text}}>{word.ar}</span></p>
       <DrawCanvas targetWord={word.ar} onResult={()=>advance(1)}/>
     </Card>
     {isReview&&<Btn onClick={()=>goStep(2)} col={GRAY} sm>Skip to conjugation →</Btn>}
   </div>);
   if(step===2)return(<div>
-    <StepBar steps={VERB_STEPS} current={2} completed={completed}/>
-    <Card>
-      <p style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 8px"}}>Conjugation of <span style={{direction:"rtl",color:PURPLE.text}}>{word.ar}</span></p>
-      <div style={{overflowX:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:340}}>
-          <thead><tr style={{borderBottom:`0.5px solid ${C.border}`}}>
-            <th style={{padding:"6px 8px",color:C.muted,textAlign:"left",fontWeight:500}}>الضمير</th>
-            <th style={{padding:"6px 8px",color:TEAL.text,textAlign:"right",fontWeight:500}}>ماضي</th>
-            <th style={{padding:"6px 8px",color:PURPLE.text,textAlign:"right",fontWeight:500}}>مضارع</th>
-          </tr></thead>
-          <tbody>{PRONOUNS.map((pr,i)=>{
-            const gc=gramColor(pr.gram);const isFirst=i===0||PRONOUNS[i-1].gram!==pr.gram;
-            return(<tr key={i} style={{borderBottom:`0.5px solid ${C.border}`}}>
-              <td style={{padding:"5px 8px",borderLeft:isFirst?`2px solid ${gc.text}`:"2px solid transparent"}}>
-                <span style={{direction:"rtl",display:"block",fontSize:13,color:C.text}}>{pr.ar}</span>
-                <span style={{fontSize:10,color:gc.text}}>{pr.gram} · {pr.sub}</span>
-              </td>
-              <td style={{padding:"5px 8px",textAlign:"right",direction:"rtl",fontSize:14,color:TEAL.text}}>{getConjugation(word).past[i]}</td>
-              <td style={{padding:"5px 8px",textAlign:"right",direction:"rtl",fontSize:14,color:PURPLE.text}}>{getConjugation(word).present[i]}</td>
-            </tr>);
-          })}</tbody>
-        </table>
-      </div>
+    <StepBar steps={VERB_STEPS} current={2} completed={completed} onStepClick={goStep}/>
+
+    {/* ── Active + Passive side by side ── */}
+    <SL>{word.conjugation?.passive ? "Active / Passive — معلوم / مجهول" : "Active conjugation — معلوم"}</SL>
+    <div style={{overflowX:"auto",marginBottom:12}} dir="rtl">
+      <table style={{borderCollapse:"collapse",fontSize:12,direction:"rtl"}}>
+        <thead>
+          <tr>
+            <th rowSpan={2} style={{padding:"6px 8px",color:C.muted,fontWeight:500,textAlign:"right",minWidth:110,verticalAlign:"bottom",borderBottom:`0.5px solid ${C.border}`}}>الضمير</th>
+            <th colSpan={4} style={{padding:"4px 8px",color:TEAL.text,fontWeight:600,textAlign:"center",borderBottom:`0.5px solid ${TEAL.text}`,borderLeft:`0.5px solid ${C.border}`}}>معلوم</th>
+            {word.conjugation?.passive&&<th colSpan={4} style={{padding:"4px 8px",color:CORAL.text,fontWeight:600,textAlign:"center",borderBottom:`0.5px solid ${CORAL.text}`,borderLeft:`2px solid ${C.borderMed}`}}>مجهول</th>}
+          </tr>
+          <tr style={{borderBottom:`0.5px solid ${C.border}`}}>
+            <th style={{padding:"4px 6px",color:TEAL.text,fontWeight:500,textAlign:"center",minWidth:75,borderLeft:`0.5px solid ${C.border}`}}>ماضي</th>
+            <th style={{padding:"4px 6px",fontWeight:500,textAlign:"center",minWidth:75}}><span style={{display:"block",color:PURPLE.text}}>مرفوع</span></th>
+            <th style={{padding:"4px 6px",fontWeight:500,textAlign:"center",minWidth:75}}><span style={{display:"block",color:CORAL.text}}>منصوب</span></th>
+            <th style={{padding:"4px 6px",fontWeight:500,textAlign:"center",minWidth:75}}><span style={{display:"block",color:AMBER.text}}>مجزوم</span></th>
+            {word.conjugation?.passive&&<>
+              <th style={{padding:"4px 6px",color:CORAL.text,fontWeight:500,textAlign:"center",minWidth:75,borderLeft:`2px solid ${C.borderMed}`}}>ماضي</th>
+              <th style={{padding:"4px 6px",color:CORAL.text,fontWeight:500,textAlign:"center",minWidth:75}}>مرفوع</th>
+              <th style={{padding:"4px 6px",color:CORAL.text,fontWeight:500,textAlign:"center",minWidth:75}}>منصوب</th>
+              <th style={{padding:"4px 6px",color:CORAL.text,fontWeight:500,textAlign:"center",minWidth:75}}>مجزوم</th>
+            </>}
+          </tr>
+        </thead>
+        <tbody>{PRONOUNS.map((pr,i)=>{
+          const gc=gramColor(pr.gram);const isFirst=i===0||PRONOUNS[i-1].gram!==pr.gram;
+          const marfu=getConjugation(word).present[i];
+          const pMarfu=word.conjugation?.passive?.present[i];
+          return(<tr key={i} style={{borderBottom:`0.5px solid ${C.border}`}}>
+            <td style={{padding:"5px 8px",borderRight:isFirst?`2px solid ${gc.text}`:"2px solid transparent"}}>
+              <span style={{direction:"rtl",display:"block",fontSize:13,color:C.text}}>{pr.ar}</span>
+              <span style={{fontSize:10,color:gc.text}}>{pr.gram} · {pr.sub}</span>
+            </td>
+            <td style={{padding:"5px 6px",textAlign:"center",direction:"rtl",fontSize:13,color:TEAL.text,borderLeft:`0.5px solid ${C.border}`}}>{getConjugation(word).past[i]}</td>
+            <td style={{padding:"5px 6px",textAlign:"center",direction:"rtl",fontSize:13,color:PURPLE.text}}>{marfu}</td>
+            <td style={{padding:"5px 6px",textAlign:"center",direction:"rtl",fontSize:13,color:CORAL.text}}>{deriveMansub(marfu)}</td>
+            <td style={{padding:"5px 6px",textAlign:"center",direction:"rtl",fontSize:13,color:AMBER.text}}>{deriveMajzum(marfu)}</td>
+            {pMarfu&&<>
+              <td style={{padding:"5px 6px",textAlign:"center",direction:"rtl",fontSize:13,color:CORAL.text,borderLeft:`2px solid ${C.borderMed}`,background:"rgba(74,27,12,0.2)"}}>{word.conjugation!.passive!.past[i]}</td>
+              <td style={{padding:"5px 6px",textAlign:"center",direction:"rtl",fontSize:13,color:CORAL.text,background:"rgba(74,27,12,0.2)"}}>{pMarfu}</td>
+              <td style={{padding:"5px 6px",textAlign:"center",direction:"rtl",fontSize:13,color:CORAL.text,background:"rgba(74,27,12,0.2)"}}>{deriveMansub(pMarfu)}</td>
+              <td style={{padding:"5px 6px",textAlign:"center",direction:"rtl",fontSize:13,color:CORAL.text,background:"rgba(74,27,12,0.2)"}}>{deriveMajzum(pMarfu)}</td>
+            </>}
+          </tr>);
+        })}</tbody>
+      </table>
+    </div>
+    {!word.conjugation?.passive&&<AccentBar color={CORAL.text}>Passive (مجهول): change the prefix vowel to ضمة and the root's middle letter to فتحة — e.g. <span style={{direction:"rtl"}}>يَكْتُبُ → يُكْتَبُ</span>. Add a `passive` object (with `past` and `present` arrays) to this word's data in `src/words/verbs.ts` to see the full table here.</AccentBar>}
+
+    {/* ── Mood rules ── */}
+    <Card style={{marginBottom:12}}>
+      <p style={{fontSize:12,fontWeight:500,color:C.text,margin:"0 0 8px"}}>How the moods differ</p>
+      {[
+        [PURPLE,"مرفوع","Default mood — used after no particle. Final vowel ُ (or long endings انِ / ونَ / ينَ)."],
+        [CORAL,"منصوب","Used after أَنْ، لَنْ، كَيْ and similar. ُ→َ, ونَ drops ن to وا, ينَ drops ن to ي, انِ drops نِ to ا."],
+        [AMBER,"مجزوم","Used after لَمْ، لَا الناهية and conditionals. ُ→ْ (sukun), same plural changes as منصوب."],
+      ].map(([col,ar,desc])=>(
+        <div key={ar as string} style={{display:"flex",gap:10,marginBottom:6,alignItems:"flex-start"}}>
+          <Pill label={ar as string} color={col as any} sm/>
+          <p style={{fontSize:12,color:C.muted,margin:0,lineHeight:1.6}}>{desc as string}</p>
+        </div>
+      ))}
     </Card>
-    <Btn onClick={()=>advance(2)} col={PURPLE} full>I have read the conjugation → next</Btn>
+    {/* ── Masdar / Ism Fail / Ism Mafool ── */}
+    <div style={{marginTop:12,marginBottom:12}}>
+      <SL>Verbal nouns & participles</SL>
+      {(["masdar","fail","mafool"] as const).map((field,fi)=>{
+        const labels=["مَصْدَر — verbal noun","اِسْم فَاعِل — active participle","اِسْم مَفْعُول — passive participle"];
+        const cols=[PURPLE,TEAL,CORAL];
+        const examples=(BOTTOM_EXAMPLES as any)[word.id]?.[field] as {form:string;meaning:string;ex:string;tr:string;note:string|null}[]|undefined;
+        const fallback=(word as any)[field] as string;
+        return(
+          <Card key={field} style={{borderLeft:`2px solid ${cols[fi].text}`,marginBottom:8}}>
+            <p style={{fontSize:11,color:cols[fi].text,fontWeight:500,margin:"0 0 8px"}}>{labels[fi]}</p>
+            {examples?(
+              examples.map((item,idx)=>(
+                <div key={idx} style={{marginBottom:idx<examples.length-1?12:0,paddingBottom:idx<examples.length-1?12:0,borderBottom:idx<examples.length-1?`0.5px solid ${C.border}`:"none"}}>
+                  <div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:4}}>
+                    <span style={{fontSize:20,direction:"rtl",color:cols[fi].text,fontWeight:500}}>{item.form}</span>
+                    <span style={{fontSize:13,color:C.muted}}>— {item.meaning}</span>
+                    {examples.length>1&&idx===0&&<Pill label="primary" color={cols[fi]} sm/>}
+                    {examples.length>1&&idx>0&&<Pill label="secondary" color={GRAY} sm/>}
+                  </div>
+                  <p style={{fontSize:14,direction:"rtl",color:C.text,margin:"0 0 3px",lineHeight:1.8}}>{item.ex}</p>
+                  <p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>{item.tr}</p>
+                  {item.note&&<div style={{background:AMBER.bg,borderRadius:6,padding:"5px 10px"}}><p style={{fontSize:12,color:AMBER.text,margin:0}}>{item.note}</p></div>}
+                  {idx>0&&examples.length>1&&<div style={{background:BLUE.bg,borderRadius:6,padding:"5px 10px",marginTop:6}}><p style={{fontSize:12,color:BLUE.text,margin:0}}>Distinction from the primary form above: compare the context and note how meaning or register shifts.</p></div>}
+                </div>
+              ))
+            ):(
+              <span style={{fontSize:18,direction:"rtl",color:cols[fi].text}}>{fallback}</span>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+    <Btn onClick={()=>advance(2)} col={PURPLE} full>I have studied the conjugation → next</Btn>
   </div>);
-  if(step===3)return(<div><StepBar steps={VERB_STEPS} current={3} completed={completed}/><SarfWriteTable word={word} onDone={()=>advance(3)}/></div>);
+  if(step===3)return(<div><StepBar steps={VERB_STEPS} current={3} completed={completed} onStepClick={goStep}/><SarfWriteTable word={word} onDone={()=>advance(3)}/></div>);
   if(step===4)return(<div>
-    <StepBar steps={VERB_STEPS} current={4} completed={completed}/>
+    <StepBar steps={VERB_STEPS} current={4} completed={completed} onStepClick={goStep}/>
     <p style={{fontSize:13,color:C.muted,margin:"0 0 10px"}}>The same verb in different contexts:</p>
     {word.contexts.map((ctx,i)=>(
       <Card key={i}><p style={{fontSize:15,direction:"rtl",color:C.text,margin:"0 0 4px",lineHeight:1.8}}>{ctx.s}</p><p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>{ctx.t}</p><Pill label={ctx.m} color={PURPLE} sm/></Card>
@@ -774,8 +1218,9 @@ const NounLearn=({word,learned,onComplete,isReview:_,initialStep,onStepChange}:{
   const [completed,setCompleted]=useState<number[]>(init);
   const markDone=(s:number)=>{const nc=[...new Set([...completed,s])];setCompleted(nc);onComplete(word.id,nc);};
   const advance=(s:number)=>{markDone(s);const next=s+1;if(next<NOUN_STEPS.length){setStep(next);onStepChange?.(next);}};
+  const goStep=(s:number)=>{setStep(s);onStepChange?.(s);};
   if(step===0)return(<div>
-    <StepBar steps={NOUN_STEPS} current={0} completed={completed}/>
+    <StepBar steps={NOUN_STEPS} current={0} completed={completed} onStepClick={goStep}/>
     <Card>
       <div style={{textAlign:"center",padding:"1rem 0"}}>
         <p style={{fontSize:40,direction:"rtl",color:C.text,margin:"0 0 6px",lineHeight:1.6}}>{word.ar}</p>
@@ -789,13 +1234,13 @@ const NounLearn=({word,learned,onComplete,isReview:_,initialStep,onStepChange}:{
     <Btn onClick={()=>advance(0)} col={TEAL} full>I understand the meaning → next</Btn>
   </div>);
   if(step===1)return(<div>
-    <StepBar steps={NOUN_STEPS} current={1} completed={completed}/>
+    <StepBar steps={NOUN_STEPS} current={1} completed={completed} onStepClick={goStep}/>
     <Card><p style={{fontSize:14,fontWeight:500,color:C.text,margin:"0 0 12px"}}>Practice writing: <span style={{direction:"rtl",color:TEAL.text}}>{word.ar}</span></p>
       <DrawCanvas targetWord={word.ar} onResult={()=>advance(1)}/>
     </Card>
   </div>);
   if(step===2)return(<div>
-    <StepBar steps={NOUN_STEPS} current={2} completed={completed}/>
+    <StepBar steps={NOUN_STEPS} current={2} completed={completed} onStepClick={goStep}/>
     <p style={{fontSize:13,color:C.muted,margin:"0 0 10px"}}>Plurals of <span style={{direction:"rtl",color:TEAL.text}}>{word.ar}</span>:</p>
     {word.plurals.map((pl,i)=>(
       <Card key={i} style={{borderLeft:`2px solid ${pl.shift?CORAL.text:TEAL.text}`}}>
@@ -810,7 +1255,7 @@ const NounLearn=({word,learned,onComplete,isReview:_,initialStep,onStepChange}:{
     <Btn onClick={()=>advance(2)} col={TEAL} full>I know the plurals → next</Btn>
   </div>);
   if(step===3)return(<div>
-    <StepBar steps={NOUN_STEPS} current={3} completed={completed}/>
+    <StepBar steps={NOUN_STEPS} current={3} completed={completed} onStepClick={goStep}/>
     {word.synonym&&<Card style={{borderLeft:`2px solid ${PURPLE.text}`}}>
       <p style={{fontSize:11,color:PURPLE.text,margin:"0 0 6px",fontWeight:500}}>SYNONYM</p>
       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}><span style={{fontSize:20,direction:"rtl",color:C.text,fontWeight:500}}>{word.synonym.ar}</span><span style={{fontSize:13,color:C.muted}}>— {word.synonym.meaning}</span></div>
@@ -823,7 +1268,7 @@ const NounLearn=({word,learned,onComplete,isReview:_,initialStep,onStepChange}:{
     <Btn onClick={()=>advance(3)} col={TEAL} full>I know synonym & antonym → next</Btn>
   </div>);
   if(step===4)return(<div>
-    <StepBar steps={NOUN_STEPS} current={4} completed={completed}/>
+    <StepBar steps={NOUN_STEPS} current={4} completed={completed} onStepClick={goStep}/>
     <p style={{fontSize:13,color:C.muted,margin:"0 0 10px"}}>Contexts and usages:</p>
     {word.contexts.map((ctx,i)=>(
       <Card key={i}><p style={{fontSize:15,direction:"rtl",color:C.text,margin:"0 0 4px",lineHeight:1.8}}>{ctx.s}</p><p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>{ctx.t}</p><Pill label={ctx.m} color={TEAL} sm/></Card>
@@ -884,6 +1329,8 @@ const QuizEngine=({words,type,progress,onUpdateProgress}:{words:(Verb|Noun)[];ty
   const dontKnow=()=>{if(!w)return;setLastOk(false);setSubmitted(true);setNearMiss(false);const prev=progress[w.id]||{stability:0.5,lastReview:null,correct:0,total:0};onUpdateProgress(w.id,{stability:0.5,lastReview:Date.now(),correct:prev.correct,total:prev.total+1});};
   const markOk=()=>{setLastOk(true);setNearMiss(false);setScore(s=>s+1);const prev=progress[w.id]||{stability:0.5,lastReview:null,correct:0,total:0};onUpdateProgress(w.id,{stability:nextS(prev.stability,true),lastReview:Date.now(),correct:prev.correct+1,total:prev.total+1});};
   const advance=()=>{if(qi+1>=queue.length){setPhase("done");return;}setQi(i=>i+1);};
+  const speechAr=useSpeech("ar-SA");
+  const speechEn=useSpeech("en-US");
   if(phase==="intro")return(<div style={{textAlign:"center",padding:"2rem 1rem"}}><p style={{fontSize:18,fontWeight:500,color:C.text,margin:"0 0 8px"}}>Quiz</p><p style={{fontSize:13,color:C.muted,margin:"0 0 24px",lineHeight:1.7}}>Lowest retention words come first. Question type scales with mastery. Press Enter to advance.</p><Btn onClick={buildQ} col={PURPLE}>Start quiz ↗</Btn></div>);
   if(phase==="done")return(<div style={{textAlign:"center",padding:"2rem 1rem"}}><p style={{fontSize:36,fontWeight:500,color:C.text,margin:"0 0 4px"}}>{score}/{queue.length}</p><p style={{fontSize:13,color:C.muted,margin:"0 0 20px"}}>{score===queue.length?"Perfect — Alhamdulillah!":score>=Math.round(queue.length*0.7)?"Strong session":"Review the explanations carefully"}</p><AccentBar color={AMBER.text}>Progress saved automatically.</AccentBar><Btn onClick={()=>setPhase("intro")} col={PURPLE}>New quiz</Btn></div>);
   if(!w)return null;
@@ -918,6 +1365,7 @@ const QuizEngine=({words,type,progress,onUpdateProgress}:{words:(Verb|Noun)[];ty
             </div>
             <div style={{display:"flex",gap:6}}>
               <Btn onClick={()=>setShowKb(true)} col={PURPLE} sm>⌨ Keyboard</Btn>
+              {speechAr.supported&&<button onClick={()=>{if(speechAr.listening)speechAr.stop();else speechAr.start(t=>{setTyped(t);doSubmit(t);});}} style={{background:speechAr.listening?"#7f1d1d":"transparent",border:`0.5px solid ${speechAr.listening?"#ef4444":C.borderMed}`,borderRadius:8,padding:"5px 10px",fontSize:14,color:speechAr.listening?"#ef4444":C.muted,cursor:"pointer",animation:speechAr.listening?"micPulse 1s ease-in-out infinite":"none"}}>{speechAr.listening?"🔴":"🎤"}</button>}
               {typed&&<Btn onClick={()=>doSubmit(typed)} col={TEAL} sm>Check ↗</Btn>}
               <Btn onClick={dontKnow} col={AMBER} sm>لا أعرف</Btn>
             </div>
@@ -929,7 +1377,10 @@ const QuizEngine=({words,type,progress,onUpdateProgress}:{words:(Verb|Noun)[];ty
               onKeyDown={e=>{if(e.key==="Enter"&&typed.trim())doSubmit(typed);}}
               placeholder="Type meaning… (Enter to submit)"
               style={{width:"100%",background:C.surface2,border:`0.5px solid ${C.border}`,borderRadius:8,padding:"10px 14px",color:C.text,fontSize:14,marginBottom:8,boxSizing:"border-box"}}/>
-            <div style={{display:"flex",gap:6}}><Btn onClick={()=>typed.trim()&&doSubmit(typed)} col={PURPLE}>Check ↗</Btn><Btn onClick={dontKnow} col={AMBER}>لا أعرف</Btn></div>
+            <div style={{display:"flex",gap:6}}>
+              {speechEn.supported&&<button onClick={()=>{if(speechEn.listening)speechEn.stop();else speechEn.start(t=>{setTyped(t);doSubmit(t);});}} style={{background:speechEn.listening?"#7f1d1d":"transparent",border:`0.5px solid ${speechEn.listening?"#ef4444":C.borderMed}`,borderRadius:8,padding:"5px 10px",fontSize:14,color:speechEn.listening?"#ef4444":C.muted,cursor:"pointer",animation:speechEn.listening?"micPulse 1s ease-in-out infinite":"none"}}>{speechEn.listening?"🔴":"🎤"}</button>}
+              <Btn onClick={()=>typed.trim()&&doSubmit(typed)} col={PURPLE}>Check ↗</Btn><Btn onClick={dontKnow} col={AMBER}>لا أعرف</Btn>
+            </div>
           </div>
         )}
       </div>
@@ -1076,7 +1527,7 @@ const Settings=({progress,learned,onResetAll,onResetWord,settings,onSaveSetting}
     <Card>
       <p style={{fontSize:13,color:C.muted,margin:"0 0 10px",lineHeight:1.7}}>Words are sourced from almaany.com and corpus.quran.com. Add new words directly in <code style={{color:TEAL.text}}>src/words/verbs.ts</code> and <code style={{color:TEAL.text}}>src/words/nouns.ts</code>.</p>
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-        <a href="https://www.almaany.com/" target="_blank" rel="noreferrer" style={{display:"inline-block",background:BLUE.bg,border:`0.5px solid ${BLUE.text}`,borderRadius:8,padding:"7px 14px",fontSize:13,color:BLUE.text,textDecoration:"none"}}>Open Almaany ↗</a>
+        <a href="https://www.almaany.com/en/dict/ar-en/" target="_blank" rel="noreferrer" style={{display:"inline-block",background:BLUE.bg,border:`0.5px solid ${BLUE.text}`,borderRadius:8,padding:"7px 14px",fontSize:13,color:BLUE.text,textDecoration:"none"}}>Open Almaany ↗</a>
         <a href="https://corpus.quran.com" target="_blank" rel="noreferrer" style={{display:"inline-block",background:TEAL.bg,border:`0.5px solid ${TEAL.text}`,borderRadius:8,padding:"7px 14px",fontSize:13,color:TEAL.text,textDecoration:"none"}}>Quran Corpus ↗</a>
       </div>
     </Card>
@@ -1120,17 +1571,17 @@ const WordModule=({type,progress,learned,onUpdateProgress,onUpdateLearned}:{type
   const words=(type==="verb"?VERBS:NOUNS) as (Verb|Noun)[];
   const steps=type==="verb"?VERB_STEPS:NOUN_STEPS;
   const TABS=type==="verb"?["Form Rules","Learn","Quiz","Learned","Guide"]:["Learn","Quiz","Learned","Guide"];
-  const [tab,setTab]=useState(0);
-  const [selectedWord,setSelectedWord]=useState<string|null>(null);
-  const [isReview,setIsReview]=useState(false);
-  const [wordStep,setWordStep]=useState<Record<string,number>>({});
-  const accentCol=type==="verb"?"#AFA9EC":"#9FE1CB";
-  const isWordLearned=(id:string)=>{const l=learned[id];return l&&l.learnedSteps&&l.learnedSteps.length>=steps.length;};
-  const learnedCount=words.filter(w=>isWordLearned(w.id)).length;
-  const learnTabIdx=type==="verb"?1:0;
-  const quizTabIdx=type==="verb"?2:1;
-  const learnedTabIdx=type==="verb"?3:2;
-  const guideTabIdx=type==="verb"?4:3;
+  const [tab,setTab]=useState(0);
+  const [selectedWord,setSelectedWord]=useState<string|null>(null);
+  const [isReview,setIsReview]=useState(false);
+  const [wordStep,setWordStep]=useState<Record<string,number>>({});
+  const accentCol=type==="verb"?"#AFA9EC":"#9FE1CB";
+  const isWordLearned=(id:string)=>{const l=learned[id];return l&&l.learnedSteps&&l.learnedSteps.length>=steps.length;};
+  const learnedCount=words.filter(w=>isWordLearned(w.id)).length;
+  const learnTabIdx=type==="verb"?1:0;
+  const quizTabIdx=type==="verb"?2:1;
+  const learnedTabIdx=type==="verb"?3:2;
+  const guideTabIdx=type==="verb"?4:3;
   if(selectedWord){
     const w=words.find(x=>x.id===selectedWord)!;
     return(<div>
@@ -1155,7 +1606,6 @@ const WordModule=({type,progress,learned,onUpdateProgress,onUpdateLearned}:{type
       })}
     </div>
     {type==="verb"&&tab===0&&<FormRulesTab/>}
-
     {tab===learnTabIdx&&(
       <div>
         <AccentBar color={accentCol}>Wizard on first encounter — steps in order. Complete all steps to unlock the quiz.</AccentBar>
@@ -1196,10 +1646,11 @@ const Home=({onSelect}:{onSelect:(m:string)=>void})=>(
   <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"80vh",gap:24,textAlign:"center"}}>
     <div>
       <h1 style={{fontSize:24,fontWeight:500,margin:"0 0 6px",color:C.text}}>Arabic Learning System</h1>
-      <p style={{fontSize:13,color:C.muted,margin:0}}>Learn → Write → Practise → Quiz · Ebbinghaus SRS · AI handwriting check</p>
+      <p style={{fontSize:13,color:C.muted,margin:"0 0 4px",lineHeight:1.6}}>Learn vocabulary with a structured wizard — meaning, handwriting, conjugation, contexts.</p>
+      <p style={{fontSize:12,color:C.subtle,margin:0}}>AI handwriting check · Spaced repetition (SRS) · 10 verb form rules</p>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,width:"100%",maxWidth:480}}>
-      {[{mode:"verb",ar:"فَعَلَ",label:"Verbs",sub:"Form Rules · Sarf · Learn · Quiz",accent:"#AFA9EC"},{mode:"noun",ar:"اِسْم",label:"Nouns",sub:"Learn · Plurals · Synonyms · Quiz",accent:"#9FE1CB"}].map(o=>(
+      {[{mode:"verb",ar:"فَعَلَ",label:"Verbs",sub:"10 form rules · Learn roots · Write · Conjugation quiz",accent:"#AFA9EC"},{mode:"noun",ar:"اِسْم",label:"Nouns",sub:"Meaning · Write · Plurals · Synonyms · Quiz",accent:"#9FE1CB"}].map(o=>(
         <button key={o.mode} onClick={()=>onSelect(o.mode)} style={{background:C.surface,border:`0.5px solid ${C.border}`,borderTop:`3px solid ${o.accent}`,borderRadius:12,padding:"2rem 1.5rem",cursor:"pointer",textAlign:"center"}}>
           <p style={{fontSize:28,margin:"0 0 10px",direction:"rtl",color:o.accent}}>{o.ar}</p>
           <p style={{fontSize:15,fontWeight:500,color:C.text,margin:"0 0 6px"}}>{o.label}</p>
@@ -1207,7 +1658,7 @@ const Home=({onSelect}:{onSelect:(m:string)=>void})=>(
         </button>
       ))}
     </div>
-    <p style={{fontSize:11,color:C.subtle,maxWidth:400}}>Complete all learning steps to unlock the quiz. Progress saved automatically.</p>
+    <p style={{fontSize:11,color:C.subtle,maxWidth:440,lineHeight:1.6}}>Each word follows a 5-step wizard: meaning → write → conjugation → sarf practice → contexts. Complete all steps to unlock the quiz. Progress is saved automatically using spaced repetition.</p>
     <button onClick={()=>onSelect("settings")} style={{background:"none",border:`0.5px solid ${C.border}`,borderRadius:8,padding:"7px 16px",fontSize:13,color:C.muted,cursor:"pointer"}}>⚙ Settings</button>
   </div>
 );
@@ -1234,7 +1685,7 @@ export default function App(){
   },[learned,progress,settings]);
   return(
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:"system-ui,sans-serif",color:C.text}}>
-      <div style={{maxWidth:820,margin:"0 auto",padding:"1.5rem 1rem 4rem"}}>
+      <div style={{maxWidth:1000,margin:"0 auto",padding:"1.5rem 1rem 4rem"}}>
         {mode&&(
           <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:"1.5rem"}}>
             <button onClick={()=>setMode(null)} style={{background:"none",border:`0.5px solid ${C.border}`,borderRadius:8,padding:"6px 12px",fontSize:12,color:C.muted,cursor:"pointer"}}>← Home</button>
